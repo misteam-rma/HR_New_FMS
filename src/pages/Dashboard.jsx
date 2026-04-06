@@ -68,21 +68,40 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // ... fetching logic (omitted for brevity in this mock, but I'll keep the actual structure)
-        // For now, I'll simulate a slight delay or just let the existing logic run
-        const response = await fetch('https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=JOINING&action=fetch');
-        const result = await response.json();
-        // ... parse data and set states
-      } catch (error) {
-        console.error("Dashboard Fetch Error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+    // Initialize with Mock Data for Consistency
+    setTotalEmployee(25);
+    setActiveEmployee(20);
+    setLeftEmployee(5);
+    setLeaveThisMonth(2);
+    
+    setMonthlyHiringData([
+      { month: 'Nov', hired: 2, left: 1 },
+      { month: 'Dec', hired: 4, left: 0 },
+      { month: 'Jan', hired: 6, left: 1 },
+      { month: 'Feb', hired: 3, left: 2 },
+      { month: 'Mar', hired: 8, left: 1 },
+      { month: 'Apr', hired: 2, left: 0 },
+    ]);
+
+    setDepartmentData([
+      { department: 'Engineering', employees: 5 },
+      { department: 'HR', employees: 4 },
+      { department: 'Sales', employees: 3 },
+      { department: 'Finance', employees: 3 },
+      { department: 'Operations', employees: 3 },
+      { department: 'Marketing', employees: 2 },
+    ]);
+
+    setDesignationData([
+      { designation: 'Engineer', employees: 5 },
+      { designation: 'Manager', employees: 4 },
+      { designation: 'Executive', employees: 3 },
+      { designation: 'Accountant', employees: 3 },
+      { designation: 'Project Manager', employees: 3 },
+      { designation: 'Director', employees: 2 },
+    ]);
+
+    setIsLoading(false);
   }, []);
 
   const StatCard = ({ title, value, icon: Icon, color, trend }) => (

@@ -15,88 +15,45 @@ const MySalary = () => {
     return record.year.includes(selectedYear.toString());
   });
 
-  const fetchSalaryData = async () => {
+  const fetchSalaryData = () => {
     setLoading(true);
     setTableLoading(true);
     setError(null);
 
-    try {
-      // Get user info from localStorage
+    // Simulate API delay
+    setTimeout(() => {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const employeeId = localStorage.getItem("employeeId")
-      const employeeName = user?.Name;
+      const employeeId = localStorage.getItem("employeeId") || "EMP1001";
+      const employeeName = user?.Name || "Rahul Sharma";
 
-      if (!employeeId || !employeeName) {
-        throw new Error("User info missing in localStorage");
-      }
+      // Mock Data for the current user
+      const dummySalaryRows = [
+        ["1", employeeId, employeeName, "2024", "April", 50000, 15000, 2000, 5000, 62000, "Paid", "2024-05-01"],
+        ["2", employeeId, employeeName, "2024", "March", 50000, 14000, 1500, 5000, 60500, "Paid", "2024-04-01"],
+        ["3", employeeId, employeeName, "2024", "February", 50000, 15000, 0, 5000, 60000, "Paid", "2024-03-01"],
+        ["4", employeeId, employeeName, "2024", "January", 50000, 15000, 3000, 5000, 63000, "Paid", "2024-02-01"]
+      ];
 
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=Salary&action=fetch'
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch salary data');
-      }
-
-      const rawData = result.data || result;
-
-      if (!Array.isArray(rawData)) {
-        throw new Error('Expected array data not received');
-      }
-
-      // Skip header row
-      const dataRows = rawData.length > 1 ? rawData.slice(1) : [];
-
-      // Map rows to structured data - PROPERLY CONVERT STRINGS TO NUMBERS
-      const processedData = dataRows
-        .map((row, index) => {
-          // Helper function to safely convert to number
-          const toNumber = (value) => {
-            if (typeof value === 'number') return value;
-            if (typeof value === 'string') {
-              // Remove commas and any non-numeric characters except decimal point
-              const cleaned = value.replace(/[^\d.]/g, '');
-              return parseFloat(cleaned) || 0;
-            }
-            return 0;
-          };
-
-          return {
-            id: index + 1,
-            timestamp: row[0] || '',
-            employeeId: row[1] || '',
-            employeeName: row[2] || '',
-            year: row[3] || '',
-            month: row[4] || '',
-            basicSalary: toNumber(row[5]),
-            allowances: toNumber(row[6]),
-            overtime: toNumber(row[7]),
-            deductions: toNumber(row[8]),
-            netSalary: toNumber(row[9]),
-            status: row[10] || '',
-            payDate: row[11] || '',
-          };
-        })
-        .filter(item =>
-          item.employeeId === employeeId && item.employeeName === employeeName
-        );
+      const processedData = dummySalaryRows.map((row, index) => ({
+        id: index + 1,
+        timestamp: new Date().toISOString(),
+        employeeId: row[1],
+        employeeName: row[2],
+        year: row[3],
+        month: row[4],
+        basicSalary: row[5],
+        allowances: row[6],
+        overtime: row[7],
+        deductions: row[8],
+        netSalary: row[9],
+        status: row[10],
+        payDate: row[11],
+      }));
 
       setSalaryData(processedData);
-
-    } catch (error) {
-      console.error('Error fetching salary data:', error);
-      setError(error.message);
-      toast.error(`Failed to load salary data: ${error.message}`);
-    } finally {
       setLoading(false);
       setTableLoading(false);
-    }
+    }, 800);
   };
 
   useEffect(() => {

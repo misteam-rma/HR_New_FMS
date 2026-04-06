@@ -31,174 +31,48 @@ const AfterLeavingWork = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
 
-  const fetchLeavingData = async () => {
+  const fetchLeavingData = () => {
     setLoading(true);
     setTableLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=LEAVING&action=fetch'
-      );
+    // Simulate delay
+    setTimeout(() => {
+      const mockSeparationData = [
+        { timestamp: "01/01/2024", employeeId: "EMP-099", name: "Vikram Seth", dateOfLeaving: "20/03/2024", mobileNo: "9876543299", reasonOfLeaving: "Family relocation", firmName: "SBH", fatherName: "D. Seth", dateOfJoining: "01/01/2022", workingLocation: "Raipur", designation: "Accountant", department: "Finance", plannedDate: "25/03/2024", actual: "26/03/2024" },
+        { timestamp: "15/03/2024", employeeId: "EMP-103", name: "Amit Verma", dateOfLeaving: "30/03/2024", mobileNo: "9876543233", reasonOfLeaving: "Higher Studies", firmName: "SBH", fatherName: "S. Verma", dateOfJoining: "10/05/2021", workingLocation: "Durg", designation: "Supervisor", department: "Operations", plannedDate: "05/04/2024", actual: "" }
+      ];
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      setPendingData(mockSeparationData.filter(item => item.plannedDate && !item.actual));
+      setHistoryData(mockSeparationData.filter(item => item.plannedDate && item.actual));
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch data from LEAVING sheet');
-      }
-
-      const rawData = result.data || result;
-
-      if (!Array.isArray(rawData)) {
-        throw new Error('Expected array data not received');
-      }
-
-      // Process data starting from row 7 (index 6) - skip headers
-      const dataRows = rawData.length > 6 ? rawData.slice(6) : [];
-
-      const processedData = dataRows.map(row => ({
-        timestamp: row[0] || '',
-        employeeId: row[1] || '',
-        name: row[2] || '',
-        dateOfLeaving: row[3] || '',
-        mobileNo: row[4] || '',
-        reasonOfLeaving: row[5] || '',
-        firmName: row[6] || '',
-        fatherName: row[7] || '',
-        dateOfJoining: row[8] || '',
-        workingLocation: row[9] || '',
-        designation: row[10] || '',
-        department: row[11] || '',
-        plannedDate: row[12] || '',
-        actual: row[13] || ''
-      }));
-
-      const pendingTasks = processedData.filter(
-        task => task.plannedDate && !task.actual
-      );
-      setPendingData(pendingTasks);
-
-      const historyTasks = processedData.filter(
-        task => task.plannedDate && task.actual
-      );
-      setHistoryData(historyTasks);
-
-    } catch (error) {
-      console.error('Error fetching leaving data:', error);
-      setError(error.message);
-      toast.error(`Failed to load leaving data: ${error.message}`);
-    } finally {
       setLoading(false);
       setTableLoading(false);
-    }
+    }, 600);
   };
 
   useEffect(() => {
     fetchLeavingData();
   }, []);
 
-  const handleAfterLeavingClick = async (item) => {
-    setFormData({
-      resignationLetterReceived: false,
-      resignationAcceptance: false,
-      handoverAssetsIdVisitingCard: false,
-      cancellationEmailBiometric: false,
-      finalReleaseDate: '',
-      removeBenefitEnrollment: false,
-      noDues: false
-    });
-
+  const handleAfterLeavingClick = (item) => {
     setSelectedItem(item);
     setShowModal(true);
     setLoading(true);
 
-    try {
-      const fullDataResponse = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=LEAVING&action=fetch'
-      );
-
-      if (!fullDataResponse.ok) {
-        throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
-      }
-
-      const fullDataResult = await fullDataResponse.json();
-      const allData = fullDataResult.data || fullDataResult;
-
-      let headerRowIndex = allData.findIndex(row =>
-        row.some(cell => cell?.toString().trim().toLowerCase().includes('employee id'))
-      );
-      if (headerRowIndex === -1) headerRowIndex = 4;
-
-      const headers = allData[headerRowIndex].map(h => h?.toString().trim());
-
-      // Find Employee ID column index
-      const employeeIdIndex = headers.findIndex(h => h?.toLowerCase() === "employee id");
-      if (employeeIdIndex === -1) {
-        throw new Error("Could not find 'Employee ID' column");
-      }
-
-      // Find the employee row index
-      const rowIndex = allData.findIndex((row, idx) =>
-        idx > headerRowIndex &&
-        row[employeeIdIndex]?.toString().trim() === item.employeeId?.toString().trim()
-      );
-
-      if (rowIndex === -1) {
-        throw new Error(`Employee ${item.employeeId} not found in LEAVING sheet`);
-      }
-
-      // Get current values from the sheet
-      // Final Release Date is now at column T (index 19)
-      const finalReleaseDateValue = allData[rowIndex][19] || "";
-
-      // Format the date for the input field (YYYY-MM-DD format)
-      let formattedDate = "";
-      if (finalReleaseDateValue) {
-        // Try to parse the date if it's in a different format
-        const dateParts = finalReleaseDateValue.toString().split('/');
-        if (dateParts.length === 3) {
-          // Assuming DD/MM/YYYY format
-          const day = dateParts[0].padStart(2, '0');
-          const month = dateParts[1].padStart(2, '0');
-          const year = dateParts[2];
-          formattedDate = `${year}-${month}-${day}`;
-        } else {
-          // Try to parse as a Date object if it's in a different format
-          const dateObj = new Date(finalReleaseDateValue);
-          if (!isNaN(dateObj.getTime())) {
-            formattedDate = dateObj.toISOString().split('T')[0];
-          }
-        }
-      }
-
-      const currentValues = {
-        resignationLetterReceived:
-          allData[rowIndex][15]?.toString().trim().toLowerCase() === "yes",
-        resignationAcceptance:
-          allData[rowIndex][16]?.toString().trim().toLowerCase() === "yes",
-        handoverAssetsIdVisitingCard:
-          allData[rowIndex][17]?.toString().trim().toLowerCase() === "yes",
-        cancellationEmailBiometric:
-          allData[rowIndex][18]?.toString().trim().toLowerCase() === "yes",
-        finalReleaseDate: formattedDate,
-        removeBenefitEnrollment:
-          allData[rowIndex][20]?.toString().trim().toLowerCase() === "yes",
-        noDues:
-          allData[rowIndex][21]?.toString().trim().toLowerCase() === "yes"
-      };
-
-      setFormData(currentValues);
-    } catch (error) {
-      console.error('Error fetching current values:', error);
-      // Keep the default reset values if there's an error
-      toast.error("Failed to load current values");
-    } finally {
+    // Simulate pre-filling checklist
+    setTimeout(() => {
+      setFormData({
+        resignationLetterReceived: true,
+        resignationAcceptance: true,
+        handoverAssetsIdVisitingCard: false,
+        cancellationEmailBiometric: false,
+        finalReleaseDate: item.dateOfLeaving || '',
+        removeBenefitEnrollment: false,
+        noDues: false
+      });
       setLoading(false);
-    }
+    }, 400);
   };
 
   const handleCheckboxChange = (name) => {
@@ -216,7 +90,7 @@ const AfterLeavingWork = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
     setSubmitting(true);
@@ -227,46 +101,8 @@ const AfterLeavingWork = () => {
       return;
     }
 
-    try {
-      // 1. First fetch the current data
-      const fullDataResponse = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=LEAVING&action=fetch'
-      );
-      if (!fullDataResponse.ok) {
-        throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
-      }
-
-      const fullDataResult = await fullDataResponse.json();
-      const allData = fullDataResult.data || fullDataResult;
-
-      // Find header row in LEAVING sheet
-      let headerRowIndex = allData.findIndex(row =>
-        row.some(cell => cell?.toString().trim().toLowerCase().includes('employee id'))
-      );
-      if (headerRowIndex === -1) headerRowIndex = 4;
-
-      const headers = allData[headerRowIndex].map(h => h?.toString().trim());
-
-      // Find Employee ID column index
-      const employeeIdIndex = headers.findIndex(h => h?.toLowerCase() === "employee id");
-      if (employeeIdIndex === -1) {
-        throw new Error("Could not find 'Employee ID' column");
-      }
-
-      // Find the employee row index
-      const rowIndex = allData.findIndex((row, idx) =>
-        idx > headerRowIndex &&
-        row[employeeIdIndex]?.toString().trim() === selectedItem.employeeId?.toString().trim()
-      );
-      if (rowIndex === -1) throw new Error(`Employee ${selectedItem.employeeId} not found in LEAVING sheet`);
-
-      // Create current date for actual date (Column N)
-      const now = new Date();
-      const currentDateFormatted = now.getFullYear() + '-' +
-        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-        String(now.getDate()).padStart(2, '0');
-
-      // Check if all conditions are met
+    // Simulate submission
+    setTimeout(() => {
       const allConditionsMet =
         formData.resignationLetterReceived &&
         formData.resignationAcceptance &&
@@ -276,110 +112,20 @@ const AfterLeavingWork = () => {
         formData.noDues &&
         formData.finalReleaseDate;
 
-      const updatePromises = [];
-
-      // Only update actual date (Column N) if all conditions are met
       if (allConditionsMet) {
-        updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "LEAVING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: "14", // Column N (Actual date)
-                value: currentDateFormatted, // Send as YYYY-MM-DD format
-              }).toString(),
-            }
-          )
-        );
-      }
-
-      // Update Final Release Date (Column T) - always update if provided
-      if (formData.finalReleaseDate) {
-        updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "LEAVING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: "20", // Column T (Final Release Date)
-                value: formData.finalReleaseDate, // Send as YYYY-MM-DD format
-              }).toString(),
-            }
-          )
-        );
-      }
-
-      // Update checklist columns (these remain as Yes/No strings)
-      const fields = [
-        { value: formData.resignationLetterReceived ? "Yes" : "No", offset: 15 },
-        { value: formData.resignationAcceptance ? "Yes" : "No", offset: 16 },
-        { value: formData.handoverAssetsIdVisitingCard ? "Yes" : "No", offset: 17 },
-        { value: formData.cancellationEmailBiometric ? "Yes" : "No", offset: 18 },
-        { value: formData.removeBenefitEnrollment ? "Yes" : "No", offset: 20 },
-        { value: formData.noDues ? "Yes" : "No", offset: 21 }
-      ];
-
-      // Add all other field updates
-      fields.forEach((field) => {
-        updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "LEAVING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: (field.offset + 1).toString(),
-                value: field.value,
-              }).toString(),
-            }
-          )
-        );
-      });
-
-      const responses = await Promise.all(updatePromises);
-      const results = await Promise.all(responses.map((r) => r.json()));
-
-      const hasError = results.some((result) => !result.success);
-      if (hasError) {
-        console.error("Some cell updates failed:", results);
-        throw new Error("Some cell updates failed");
-      }
-
-      if (allConditionsMet) {
-        toast.success("All conditions met! Actual date updated successfully.");
+        // Move to history
+        const updatedItem = { ...selectedItem, actual: new Date().toISOString().split('T')[0] };
+        setHistoryData(prev => [updatedItem, ...prev]);
+        setPendingData(prev => prev.filter(item => item.employeeId !== selectedItem.employeeId));
+        toast.success("All conditions met! Record moved to history.");
       } else {
-        toast.success(
-          "Conditions updated successfully. Actual date will be updated when all conditions are met."
-        );
+        toast.success("Checklist updated locally.");
       }
 
       setShowModal(false);
-      fetchLeavingData();
-    } catch (error) {
-      console.error('Update error:', error);
-      toast.error(`Update failed: ${error.message}`);
-    } finally {
       setLoading(false);
       setSubmitting(false);
-    }
+    }, 1000);
   };
 
   const formatDOB = (dateString) => {

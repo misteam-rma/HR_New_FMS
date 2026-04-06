@@ -1,5 +1,8 @@
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { Plus, Filter, X } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { MOCK_USERS, MOCK_EMPLOYEES, MOCK_LEAVE_DATA } from '../data/mockData';
 
 const LeaveRequest = () => {
   const employeeId = localStorage.getItem("employeeId");
@@ -27,119 +30,31 @@ const LeaveRequest = () => {
     reason: ''
   });
 
-  const fetchHodNames = async () => {
-    try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=Master&action=fetch'
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch HOD data');
-      }
-
-      const rawData = result.data || result;
-
-      if (!Array.isArray(rawData)) {
-        throw new Error('Expected array data not received');
-      }
-
-      // Skip the first row (header) and get all names from Column A (index 0)
-      const hodData = rawData.slice(1).map(row => row[0] || '').filter(name => name);
-
-      setHodNames(hodData);
-    } catch (error) {
-      console.error('Error fetching HOD data:', error);
-      toast.error(`Failed to load HOD data: ${error.message}`);
-    }
+  const fetchHodNames = () => {
+    // Filter mock users who are admins to act as HODs
+    const hods = MOCK_USERS.filter(u => u.Admin === "Yes").map(u => u.Name);
+    setHodNames(hods);
   };
 
   // Fetch employee data including designation
-  const fetchEmployeeData = async () => {
-    try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=JOINING&action=fetch'
-      );
+  const fetchEmployees = () => {
+    const employeeData = MOCK_EMPLOYEES.map(emp => ({
+      id: emp.joiningNo,
+      name: emp.candidateName,
+      department: emp.department
+    }));
+    setEmployees(employeeData);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+    const currentUserEmp = MOCK_EMPLOYEES.find(
+      emp => emp.candidateName.toLowerCase() === user.Name?.toLowerCase()
+    );
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch employee data');
-      }
-
-      const rawData = result.data || result;
-
-      if (!Array.isArray(rawData)) {
-        throw new Error('Expected array data not received');
-      }
-
-      const employeeRow = rawData.slice(6).find(row =>
-        row[2]?.toString().trim().toLowerCase() === user.Name?.toString().trim().toLowerCase()
-      );
-
-      if (employeeRow) {
-        const employeeId = employeeRow[1] || '';
-        const department = employeeRow[20] || '';
-
-        setFormData(prev => ({
-          ...prev,
-          employeeId: employeeId,
-          department: department
-          // Removed auto-setting hodName here
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching employee data:', error);
-    }
-  };
-
-  // Fetch employees from JOINING sheet
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=JOINING&action=fetch'
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch employee data');
-      }
-
-      const rawData = result.data || result;
-
-      if (!Array.isArray(rawData)) {
-        throw new Error('Expected array data not received');
-      }
-
-      // Data starts from row 7 (index 6)
-      // Column C is index 2 (Employee Name)
-      // Column B is index 1 (Employee ID)
-      // Column U is index 20 (Department) - changed from designation
-      const employeeData = rawData.slice(6).map((row, index) => ({
-        id: row[1] || '', // Column B (Employee ID)
-        name: row[2] || '', // Column C (Employee Name)
-        department: row[20] || '', // Column U (Department)
-        rowIndex: index + 7 // Actual row number in sheet
-      })).filter(emp => emp.name && emp.id); // Filter out empty entries
-
-      setEmployees(employeeData);
-    } catch (error) {
-      console.error('Error fetching employee data:', error);
-      toast.error(`Failed to load employee data: ${error.message}`);
+    if (currentUserEmp) {
+      setFormData(prev => ({
+        ...prev,
+        employeeId: currentUserEmp.joiningNo,
+        department: currentUserEmp.department
+      }));
     }
   };
 
@@ -303,74 +218,37 @@ const LeaveRequest = () => {
     setTableLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=Leave Management&action=fetch'
-      );
+    // Simulate API delay
+    setTimeout(() => {
+      try {
+        // Filter mock leave data for the current user
+        const processedData = MOCK_LEAVE_DATA
+          .map((item, index) => ({
+            ...item,
+            id: index + 1,
+            // Align with existing field names used in the UI
+            startDate: item.startDate,
+            endDate: item.endDate,
+            timestamp: item.appliedDate || item.timestamp,
+            serialNo: `LR-${String(index + 1).padStart(3, '0')}`,
+          }))
+          .filter(item => item.employeeName.toLowerCase() === user.Name?.toLowerCase());
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch leave data');
-      }
-
-      const rawData = result.data || result;
-      console.log("Raw data from API:", rawData);
-
-      if (!Array.isArray(rawData)) {
-        throw new Error('Expected array data not received');
-      }
-
-      const dataRows = rawData.length > 1 ? rawData.slice(1) : [];
-
-      // Updated column indices:
-      // Column E (index 4) - From Date
-      // Column F (index 5) - To Date
-      // Column H (index 7) - Status
-      // Column I (index 8) - Leave Type
-      // Column M (index 12) - Days (changed from index 13)
-      const processedData = dataRows
-        .map((row, index) => ({
-          id: index + 1,
-          timestamp: row[0] || '',
-          serialNo: row[1] || '',
-          employeeId: row[2] || '',
-          employeeName: row[3] || '',
-          startDate: row[4] || '', // Column E (index 4) - From Date
-          endDate: row[5] || '',   // Column F (index 5) - To Date
-          reason: row[6] || '',
-          status: row[7] || 'Pending', // Column H (index 7) - Status
-          leaveType: row[8] || '', // Column I (index 8) - Leave Type
-          days: row[12] || 0, // Column M (index 12) - Days (changed from 13)
-          appliedDate: row[0] || '', // Using timestamp as applied date
-          approvedBy: row[9] || '',
-        }))
-        .filter(item => item.employeeName === user.Name);
-
-      if (processedData.length > 0) {
         setLeavesData(processedData);
-      } else {
-        setLeavesData([]);
+        setLoading(false);
+        setTableLoading(false);
+      } catch (err) {
+        console.error('Error processing mock leave data:', err);
+        setError(err.message);
+        setLoading(false);
+        setTableLoading(false);
       }
-
-    } catch (error) {
-      console.error('Error fetching leave data:', error);
-      setError(error.message);
-      toast.error(`Failed to load leave data: ${error.message}`);
-    } finally {
-      setLoading(false);
-      setTableLoading(false);
-    }
+    }, 800);
   };
 
   useEffect(() => {
     fetchLeaveData();
     fetchEmployees();
-    fetchEmployeeData();
     fetchHodNames();
   }, []);
 
@@ -390,81 +268,45 @@ const LeaveRequest = () => {
       return;
     }
 
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
+    // Simulate API delay
+    setTimeout(() => {
       const now = new Date();
+      const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+      
+      const newRequest = {
+        id: leavesData.length + 1,
+        serialNo: `LR-${String(leavesData.length + 1).padStart(3, '0')}`,
+        employeeId: formData.employeeId,
+        employeeName: formData.employeeName,
+        startDate: formatDOB(formData.fromDate),
+        endDate: formatDOB(formData.toDate),
+        reason: formData.reason,
+        status: "Pending",
+        leaveType: formData.leaveType,
+        days: calculateDays(formData.fromDate, formData.toDate),
+        timestamp: formattedDate + " " + now.toLocaleTimeString(),
+        appliedDate: formattedDate
+      };
 
-      // Format timestamp as DD/MM/YYYY HH:MM:SS
-      const day = String(now.getDate()).padStart(2, "0");
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const year = now.getFullYear();
-      const hours = String(now.getHours()).padStart(2, "0");
-      const minutes = String(now.getMinutes()).padStart(2, "0");
-      const seconds = String(now.getSeconds()).padStart(2, "0");
-      const formattedTimestamp = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-
-      // Calculate leave days
-      const leaveDays = calculateDays(formData.fromDate, formData.toDate);
-
-      // Updated rowData array with days at index 12
-      const rowData = [
-        formattedTimestamp, // Timestamp - index 0
-        "", // Serial number (empty for auto-increment) - index 1
-        formData.employeeId, // Employee ID - index 2
-        formData.employeeName, // Employee Name - index 3
-        formatDOB(formData.fromDate), // Leave Date Start (formatted to dd/mm/yyyy) - index 4
-        formatDOB(formData.toDate), // Leave Date End (formatted to dd/mm/yyyy) - index 5
-        formData.reason, // Reason - index 6
-        "Pending", // Status - index 7
-        formData.leaveType, // Leave Type - index 8
-        formData.hodName, // HOD Name - index 9
-        formData.department, // Department - index 10
-        formData.substitute, // Substitute - index 11
-        leaveDays.toString(), // Total Days - index 12 (Column M)
-        "", // Empty for future use - index 13 (Column N)
-      ];
-
-      const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-        {
-          method: "POST",
-          body: new URLSearchParams({
-            sheetName: "Leave Management",
-            action: "insert",
-            rowData: JSON.stringify(rowData),
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success("Leave Request submitted successfully!");
-
-        // Refresh the data immediately to update the button state
-        await fetchLeaveData();
-
-        setFormData({
-          employeeId: employeeId,
-          employeeName: user.Name || "",
-          department: formData.department || "",
-          hodName: "",
-          substitute: "",
-          leaveType: "",
-          fromDate: "",
-          toDate: "",
-          reason: "",
-        });
-        setShowModal(false);
-      } else {
-        toast.error("Failed to insert: " + (result.error || "Unknown error"));
-      }
-    } catch (error) {
-      console.error("Insert error:", error);
-      toast.error("Something went wrong!");
-    } finally {
+      setLeavesData(prev => [newRequest, ...prev]);
       setSubmitting(false);
-    }
+      toast.success("Leave Request submitted successfully!");
+      setShowModal(false);
+      
+      // Reset form
+      setFormData({
+        employeeId: employeeId,
+        employeeName: user.Name || "",
+        department: formData.department || "",
+        hodName: "",
+        substitute: "",
+        leaveType: "",
+        fromDate: "",
+        toDate: "",
+        reason: "",
+      });
+    }, 1000);
   };
 
 
@@ -508,7 +350,7 @@ const LeaveRequest = () => {
   // Calculate leave counts based on selected month and year
 
   const calculateLeaveStats = () => {
-    const currentYear = new Date().getFullYear();
+    const targetYear = parseInt(selectedYear);
 
     // Filter approved leaves for current employee
     const relevantLeaves = leavesData.filter(leave =>
@@ -516,71 +358,37 @@ const LeaveRequest = () => {
       leave.employeeName === user.Name
     );
 
-    // Calculate approved leaves using days from Column M (index 12)
-    const casualLeaveTaken = relevantLeaves
-      .filter((leave) => {
-        const leaveYear = new Date(
-          leave.startDate.split("/").reverse().join("-")
-        ).getFullYear();
-        return (
-          leave.leaveType &&
-          leave.leaveType.toLowerCase().includes("casual") &&
-          leaveYear === currentYear
-        );
-      })
-      .reduce((sum, leave) => {
-        // Use days from Column M (index 12), fallback to 0 if not available
-        const days = leave.days ? parseInt(leave.days) : 0;
-        return sum + (isNaN(days) ? 0 : days);
-      }, 0);
+    const filterAndSum = (typeKey) => {
+      return relevantLeaves
+        .filter((leave) => {
+          if (!leave.leaveType || !leave.leaveType.toLowerCase().includes(typeKey)) return false;
+          if (!leave.startDate) return false;
+          
+          let parsedDate;
+          if (leave.startDate.includes('/')) {
+             const parts = leave.startDate.split('/');
+             parsedDate = new Date(parts[2], parts[1] - 1, parts[0]);
+          } else {
+             parsedDate = new Date(leave.startDate);
+          }
+          
+          if (isNaN(parsedDate.getTime())) return false;
+          
+          const matchYear = parsedDate.getFullYear() === targetYear;
+          const matchMonth = selectedMonth === 'all' ? true : parsedDate.getMonth() === parseInt(selectedMonth);
+          
+          return matchYear && matchMonth;
+        })
+        .reduce((sum, leave) => {
+          const days = leave.days ? parseInt(leave.days) : 0;
+          return sum + (isNaN(days) ? 0 : days);
+        }, 0);
+    };
 
-    const earnedLeaveTaken = relevantLeaves
-      .filter((leave) => {
-        const leaveYear = new Date(
-          leave.startDate.split("/").reverse().join("-")
-        ).getFullYear();
-        return (
-          leave.leaveType &&
-          leave.leaveType.toLowerCase().includes("earned") &&
-          leaveYear === currentYear
-        );
-      })
-      .reduce((sum, leave) => {
-        const days = leave.days ? parseInt(leave.days) : 0;
-        return sum + (isNaN(days) ? 0 : days);
-      }, 0);
-
-    const sickLeaveTaken = relevantLeaves
-      .filter((leave) => {
-        const leaveYear = new Date(
-          leave.startDate.split("/").reverse().join("-")
-        ).getFullYear();
-        return (
-          leave.leaveType &&
-          leave.leaveType.toLowerCase().includes("sick") &&
-          leaveYear === currentYear
-        );
-      })
-      .reduce((sum, leave) => {
-        const days = leave.days ? parseInt(leave.days) : 0;
-        return sum + (isNaN(days) ? 0 : days);
-      }, 0);
-
-    const restrictedHolidayTaken = relevantLeaves
-      .filter((leave) => {
-        const leaveYear = new Date(
-          leave.startDate.split("/").reverse().join("-")
-        ).getFullYear();
-        return (
-          leave.leaveType &&
-          leave.leaveType.toLowerCase().includes("restricted") &&
-          leaveYear === currentYear
-        );
-      })
-      .reduce((sum, leave) => {
-        const days = leave.days ? parseInt(leave.days) : 0;
-        return sum + (isNaN(days) ? 0 : days);
-      }, 0);
+    const casualLeaveTaken = filterAndSum("casual");
+    const earnedLeaveTaken = filterAndSum("earned");
+    const sickLeaveTaken = filterAndSum("sick");
+    const restrictedHolidayTaken = filterAndSum("restricted");
 
     const totalLeave =
       casualLeaveTaken +
@@ -598,6 +406,23 @@ const LeaveRequest = () => {
   };
 
   const leaveStats = calculateLeaveStats();
+
+  const filteredTableData = leavesData.filter(leave => {
+      if (!leave.startDate) return true;
+      let d;
+      if (leave.startDate.includes('/')) {
+        const p = leave.startDate.split('/');
+        d = new Date(p[2], p[1]-1, p[0]);
+      } else {
+        d = new Date(leave.startDate);
+      }
+      
+      if (isNaN(d.getTime())) return true;
+
+      const matchYear = d.getFullYear() === parseInt(selectedYear);
+      const matchMonth = selectedMonth === 'all' ? true : d.getMonth() === parseInt(selectedMonth);
+      return matchYear && matchMonth;
+  });
 
 
 
@@ -747,13 +572,13 @@ const LeaveRequest = () => {
                            <LoadingSpinner message="Syncing requests..." minHeight="300px" />
                          </td>
                        </tr>
-                    ) : leavesData.length === 0 ? (
+                    ) : filteredTableData.length === 0 ? (
                        <tr>
                          <td colSpan="6" className="px-6 py-20 text-center">
                             <p className="text-sm font-bold text-slate-400">No records found matching your criteria</p>
                          </td>
                        </tr>
-                    ) : leavesData.map((request, index) => (
+                    ) : filteredTableData.map((request, index) => (
                        <tr key={index} className="hover:bg-slate-50/80 transition-colors group">
                            <td className="px-6 py-4">
                                <span className="text-[11px] font-black text-slate-400">#{request.serialNo || index + 1}</span>
@@ -793,11 +618,11 @@ const LeaveRequest = () => {
                 <div className="p-8">
                    <LoadingSpinner message="Syncing requests..." />
                 </div>
-             ) : leavesData.length === 0 ? (
+             ) : filteredTableData.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                    <p className="text-sm font-bold">No records found</p>
                 </div>
-             ) : leavesData.map((request, index) => (
+             ) : filteredTableData.map((request, index) => (
                 <div key={index} className="p-4 bg-white hover:bg-slate-50 transition-colors">
                    <div className="flex justify-between items-start mb-3">
                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">#{request.serialNo || index+1}</span>

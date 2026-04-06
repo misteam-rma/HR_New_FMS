@@ -1,3 +1,5 @@
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, X, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -34,7 +36,7 @@ const GatePassRequest = () => {
     gatePassImage: null
   });
 
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec";
+  // SCRIPT_URL removed for offline demo
 
   useEffect(() => {
     if (currentUserName) {
@@ -71,142 +73,56 @@ const GatePassRequest = () => {
     setMonthlyRequestCount(monthlyRequests.length);
   };
 
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch(`${SCRIPT_URL}?sheet=JOINING&action=fetch`);
-      const result = await response.json();
-
-      if (result.success) {
-        if (result.data && result.data.length > 1) {
-          const employeeData = result.data.slice(1)
-            .map(row => ({
-              id: row[1] || '', // Employee ID from Column B
-              name: row[2] || '', // Name from Column C
-              department: row[20] || '', // Department from Column U
-              whatsappNumber: row[11] || '' // WhatsApp from Column L
-            }))
-            .filter(emp => emp.id && emp.name &&
-              emp.name.toLowerCase() === currentUserName.toLowerCase());
-
-          setEmployees(employeeData);
-
-          // If current user is found in JOINING sheet, prefill the form
-          if (employeeData.length > 0) {
-            const userData = employeeData[0];
-            setFormData(prev => ({
-              ...prev,
-              employeeId: userData.id,
-              employeeName: userData.name,
-              department: userData.department,
-              whatsappNumber: userData.whatsappNumber // Prefill but allow editing
-            }));
-          }
-        } else {
-          setEmployees([]);
-        }
-      } else {
-        toast.error('Failed to load employee data');
-      }
-    } catch (error) {
-      console.error('Error fetching employee data:', error);
-      toast.error(`Failed to load employee data: ${error.message}`);
+  const fetchEmployees = () => {
+    // Simulate prefilling from JOINING sheet
+    const mockEmployeeData = [
+      { id: 'EMP-101', name: 'Rahul Sharma', department: 'Engineering', whatsappNumber: '9876543210' },
+      { id: 'EMP-102', name: 'Priya Singh', department: 'Human Resources', whatsappNumber: '9876543211' }
+    ];
+    
+    const userData = mockEmployeeData.find(emp => emp.name.toLowerCase() === currentUserName.toLowerCase());
+    if (userData) {
+      setEmployees([userData]);
+      setFormData(prev => ({
+        ...prev,
+        employeeId: userData.id,
+        employeeName: userData.name,
+        department: userData.department,
+        whatsappNumber: userData.whatsappNumber
+      }));
     }
   };
 
-  const fetchHodNames = async () => {
-    try {
-      const response = await fetch(`${SCRIPT_URL}?sheet=Master&action=fetch`);
-      const result = await response.json();
-
-      if (result.success) {
-        if (result.data && result.data.length > 0) {
-          const hodNames = result.data
-            .slice(1)
-            .map(row => row[0])
-            .filter(name => name);
-          setHodNames(hodNames);
-        } else {
-          setHodNames(['Deepak', 'Vikas', 'Dharam', 'Pratap', 'Aubhav']);
-        }
-      } else {
-        toast.error('Failed to load HOD data');
-        setHodNames(['Deepak', 'Vikas', 'Dharam', 'Pratap', 'Aubhav']);
-      }
-    } catch (error) {
-      console.error('Error fetching HOD data:', error);
-      toast.error(`Failed to load HOD data: ${error.message}`);
-      setHodNames(['Deepak', 'Vikas', 'Dharam', 'Pratap', 'Aubhav']);
-    }
+  const fetchHodNames = () => {
+    setHodNames(['Deepak', 'Vikas', 'Dharam', 'Pratap', 'Anubhav']);
   };
 
 
-  const fetchGatePassData = async () => {
+  const fetchGatePassData = () => {
     setLoading(true);
     setTableLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(`${SCRIPT_URL}?sheet=Gate%20Pass&action=fetch`);
-      const result = await response.json();
+    // Simulate delay
+    setTimeout(() => {
+      const mockGatePasses = [
+        { timestamp: "01/04/2024 10:00:00", serialNo: "GP-101", employeeId: "EMP-101", employeeName: "Rahul Sharma", department: "Engineering", visitPlace: "Bank", visitReason: "Personal work", departureTime: "01/04/2024", arrivalTime: "01/04/2024", hodName: "Vikram Seth", whatsappNumber: "9876543210", gatePassImage: "", status: "approved" },
+        { timestamp: "05/04/2024 14:00:00", serialNo: "GP-102", employeeId: "EMP-101", employeeName: "Rahul Sharma", department: "Engineering", visitPlace: "Home", visitReason: "Emergency", departureTime: "05/04/2024", arrivalTime: "05/04/2024", hodName: "Vikram Seth", whatsappNumber: "9876543210", gatePassImage: "", status: "pending" }
+      ];
 
-      if (result.success) {
-        if (result.data && result.data.length > 1) {
-          const gatePassData = result.data.slice(1).map(row => ({
-            timestamp: row[0] || '', // Column A (Timestamp)
-            serialNo: row[1] || '', // Column B (Serial No)
-            employeeId: row[2] || '', // Column C (Employee ID)
-            employeeName: row[3] || '', // Column D (Name)
-            department: row[4] || '', // Column E (Department)
-            visitPlace: row[5] || '', // Column F (Place and Reason)
-            visitReason: row[5] || '', // Column F (combined with place)
-            departureTime: row[6] || '', // Column G (Departure Time)
-            arrivalTime: row[7] || '', // Column H (Arrival Time)
-            hodName: row[8] || '', // Column I (HOD Name)
-            whatsappNumber: row[9] || '', // Column J (WhatsApp)
-            gatePassImage: row[10] || '', // Column K (Image)
-            status: row[11] || 'pending' // Column L (Status)
-          }));
+      const userPasses = mockGatePasses.filter(pass => pass.employeeName.toLowerCase() === currentUserName.toLowerCase());
+      
+      setPendingPasses(userPasses.filter(p => p.status === 'pending'));
+      setApprovedPasses(userPasses.filter(p => p.status === 'approved'));
+      setRejectedPasses(userPasses.filter(p => p.status === 'rejected'));
 
-          // Filter passes to show only the current user's data using case-insensitive comparison
-          const userPendingPasses = gatePassData.filter(
-            pass => pass.status === 'pending' &&
-              pass.employeeName.toLowerCase() === currentUserName.toLowerCase()
-          );
-          const userApprovedPasses = gatePassData.filter(
-            pass => pass.status === 'approved' &&
-              pass.employeeName.toLowerCase() === currentUserName.toLowerCase()
-          );
-          const userRejectedPasses = gatePassData.filter(
-            pass => pass.status === 'rejected' &&
-              pass.employeeName.toLowerCase() === currentUserName.toLowerCase()
-          );
+      // Simulate limits
+      setCanSubmitRequest(true);
+      setMonthlyRequestCount(userPasses.length);
 
-          setPendingPasses(userPendingPasses);
-          setApprovedPasses(userApprovedPasses);
-          setRejectedPasses(userRejectedPasses);
-
-          // Check if user has already submitted a request today (any status)
-          checkTodaySubmission(result.data.slice(1));
-          // Check monthly limit (any status)
-          checkMonthlyLimit(result.data.slice(1));
-        } else {
-          setPendingPasses([]);
-          setApprovedPasses([]);
-          setRejectedPasses([]);
-          setCanSubmitRequest(true);
-          setMonthlyRequestCount(0);
-        }
-      } else {
-        toast.error('Failed to load gate pass data');
-      }
-    } catch (error) {
-      console.error('Error fetching gate pass data:', error);
-      setError(error.message);
-      toast.error(`Failed to load gate pass data: ${error.message}`);
-    } finally {
       setLoading(false);
       setTableLoading(false);
-    }
+    }, 600);
   };
 
 
@@ -298,45 +214,13 @@ const GatePassRequest = () => {
   };
 
   const uploadImageToDrive = async (file) => {
-    try {
-      const base64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-      });
-
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          action: 'uploadFile',
-          base64Data: base64Data,
-          fileName: file.name,
-          mimeType: file.type,
-          folderId: '1AWeKCYD_hy_9pxT17zoLp-tNgSla9gBi'
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        return result.fileUrl;
-      } else {
-        throw new Error(result.error || 'Failed to upload image');
-      }
-    } catch (error) {
-      console.error('Image upload error:', error);
-      throw error;
-    }
+    // Simulated upload - returning local object URL for preview
+    return URL.createObjectURL(file);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Check monthly limit
     if (monthlyRequestCount >= 3) {
       toast.error('You have reached the monthly limit of 3 gate pass requests');
       return;
@@ -348,135 +232,42 @@ const GatePassRequest = () => {
       return;
     }
 
-    try {
-      setSubmitting(true);
-
-      // Fetch latest data to get accurate serial number and check for today's submissions
-      const response = await fetch(`${SCRIPT_URL}?sheet=Gate%20Pass&action=fetch`);
-      const result = await response.json();
-
-      if (!result.success) {
-        toast.error('Failed to verify request. Please try again.');
-        return;
-      }
-
-      const allPasses = result.data && result.data.length > 1 ? result.data.slice(1) : [];
-
-      // Check if user has already submitted today
-      const today = new Date().toDateString();
-      const userPassesToday = allPasses.filter(pass => {
-        if (pass[6]) { // Column G: Departure Time (index 6)
-          try {
-            const [datePart, timePart] = pass[6].split(' ');
-            const [day, month, year] = datePart.split('/');
-            const fullYear = parseInt(year) + 2000;
-            const passDate = new Date(fullYear, parseInt(month) - 1, parseInt(day));
-
-            return passDate.toDateString() === today &&
-              pass[3] && pass[3].toLowerCase() === currentUserName.toLowerCase(); // Column D: Name (index 3)
-          } catch (e) {
-            return false;
-          }
-        }
-        return false;
-      });
-
-      if (userPassesToday.length > 0) {
-        toast.error('You have already submitted a gate pass request today');
-        setCanSubmitRequest(false);
-        return;
-      }
-
-      let imageUrl = '';
-      if (formData.gatePassImage) {
-        imageUrl = await uploadImageToDrive(formData.gatePassImage);
-      }
-
-      const formatDateTimeForSheet = (date) => {
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-
-        // Return in DD/MM/YYYY HH:MM:SS format for Google Sheets
-        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    setSubmitting(true);
+    // Simulate submission
+    setTimeout(() => {
+      const newGatePass = {
+        timestamp: new Date().toLocaleString(),
+        serialNo: `GP-${Date.now().toString().slice(-4)}`,
+        employeeId: formData.employeeId,
+        employeeName: formData.employeeName,
+        department: formData.department,
+        visitPlace: formData.visitPlace,
+        visitReason: formData.visitReason,
+        departureTime: formData.departureTime,
+        arrivalTime: formData.arrivalTime,
+        hodName: formData.hodName,
+        whatsappNumber: formData.whatsappNumber,
+        gatePassImage: formData.gatePassImage ? URL.createObjectURL(formData.gatePassImage) : "",
+        status: 'pending'
       };
 
-      // Format dates to dd/mm/yyyy for departure and arrival
-      const formatDateForSheet = (dateTimeString) => {
-        const date = new Date(dateTimeString);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
+      setPendingPasses(prev => [newGatePass, ...prev]);
+      setMonthlyRequestCount(prev => prev + 1);
+      setCanSubmitRequest(false);
 
-        return `${day}/${month}/${year}`;
-      };
-
-      const timestamp = formatDateTimeForSheet(new Date());
-      const formattedDepartureTime = formatDateForSheet(formData.departureTime);
-      const formattedArrivalTime = formatDateForSheet(formData.arrivalTime);
-
-      // Prepare row data according to your column structure
-      const serialNo = getNextSerialNo(allPasses);
-      const placeAndReason = `${formData.visitPlace} - ${formData.visitReason}`;
-
-      const rowData = [
-        timestamp,                    // Column A: Timestamp (dd/mm/yy hh:mm:ss)
-        serialNo,                     // Column B: Serial No
-        formData.employeeId,          // Column C: Employee ID
-        formData.employeeName,        // Column D: Name of Employee
-        formData.department,          // Column E: Department
-        placeAndReason,               // Column F: Place and Reason to visit
-        formattedDepartureTime,       // Column G: Departure From Plant (dd/mm/yyyy)
-        formattedArrivalTime,         // Column H: Arrival at Plant (dd/mm/yyyy)
-        formData.hodName,             // Column I: HOD Name
-        formData.whatsappNumber,      // Column J: Employee Whatsapp Number
-        imageUrl,                     // Column K: Image of Employee gate pass (uploaded URL)
-        'pending'                     // Column L: Status
-      ];
-
-      const insertResponse = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          action: 'insert',
-          sheetName: 'Gate Pass',
-          rowData: JSON.stringify(rowData)
-        })
-      });
-
-      const insertResult = await insertResponse.json();
-
-      if (insertResult.success) {
-        // Update monthly count and disable today's submission
-        setMonthlyRequestCount(prev => prev + 1);
-        setCanSubmitRequest(false);
-
-        toast.success('Gate Pass Request submitted successfully!');
-        setFormData(prev => ({
-          ...prev,
-          visitPlace: '',
-          visitReason: '',
-          departureTime: '',
-          arrivalTime: '',
-          hodName: '',
-          gatePassImage: null
-        }));
-        setShowModal(false);
-        fetchGatePassData(); // Refresh the data
-      } else {
-        toast.error('Failed to submit gate pass request');
-      }
-    } catch (error) {
-      console.error('Submit error:', error);
-      toast.error('Something went wrong!');
-    } finally {
+      toast.success('Gate Pass Request submitted successfully!');
+      setFormData(prev => ({
+        ...prev,
+        visitPlace: '',
+        visitReason: '',
+        departureTime: '',
+        arrivalTime: '',
+        hodName: '',
+        gatePassImage: null
+      }));
+      setShowModal(false);
       setSubmitting(false);
-    }
+    }, 1000);
   };
 
   const formatDateTime = (dateTimeString) => {

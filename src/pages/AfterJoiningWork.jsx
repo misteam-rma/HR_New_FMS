@@ -51,363 +51,83 @@ const AfterJoiningWork = () => {
   });
 
   // Google Drive folder ID for storing images
-  const DRIVE_FOLDER_ID = "1SEpx7Z3wuI3-jQHovPfTc8svpbcOBpuA";
+  // DRIVE_FOLDER_ID removed for offline demo
 
-  const fetchJoiningData = async () => {
+  const fetchJoiningData = () => {
     setLoading(true);
     setTableLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=JOINING&action=fetch"
-      );
+    // Simulate delay
+    setTimeout(() => {
+      const mockJoiningData = [
+        { timestamp: "01/01/2024", joiningNo: "JN-001", indentNo: "IND-101", enquiryNo: "ENQ-101", candidateName: "Rahul Sharma", fatherName: "P. Sharma", dateOfJoining: "2024-01-01", joiningPlace: "Raipur", designation: "Engineer", department: "Engineering", aadharPhoto: "", panCard: "", candidatePhoto: "", currentAddress: "Raipur", addressAsPerAadhar: "Raipur", bodAsPerAadhar: "1990-01-01", gender: "Male", mobileNo: "9876543210", familyMobileNo: "9876543211", relationWithFamily: "Father", pfId: "", accountNo: "123456789", ifscCode: "SBIN0001", branchName: "Raipur", passbookPhoto: "", email: "rahul@example.com", esicNo: "", qualification: "B.Tech", pfEligible: "Yes", esicEligible: "Yes", companyName: "SBH", emailToBeIssue: "", issueMobile: "", issueLaptop: "", aadharNo: "123412341234", modeOfAttendance: "Biometric", quaficationPhoto: "", paymentMode: "Bank", salarySlip: "", resumeCopy: "", plannedDate: "2024-01-10", actual: "2024-01-11" },
+        { timestamp: "05/01/2024", joiningNo: "JN-002", indentNo: "IND-102", enquiryNo: "ENQ-102", candidateName: "Priya Singh", fatherName: "R. Singh", dateOfJoining: "2024-01-05", joiningPlace: "Durg", designation: "HR Executive", department: "Human Resources", aadharPhoto: "", panCard: "", candidatePhoto: "", currentAddress: "Durg", addressAsPerAadhar: "Durg", bodAsPerAadhar: "1992-05-15", gender: "Female", mobileNo: "9876543212", familyMobileNo: "9876543213", relationWithFamily: "Father", pfId: "", accountNo: "987654321", ifscCode: "HDFC0001", branchName: "Durg", passbookPhoto: "", email: "priya@example.com", esicNo: "", qualification: "MBA", pfEligible: "Yes", esicEligible: "Yes", companyName: "SBH", emailToBeIssue: "", issueMobile: "", issueLaptop: "", aadharNo: "432143214321", modeOfAttendance: "Biometric", quaficationPhoto: "", paymentMode: "Bank", salarySlip: "", resumeCopy: "", plannedDate: "2024-01-15", actual: "" }
+      ];
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("Raw JOINING API response:", result);
-
-      if (!result.success) {
-        throw new Error(
-          result.error || "Failed to fetch data from JOINING sheet"
-        );
-      }
-
-      const rawData = result.data || result;
-
-      if (!Array.isArray(rawData)) {
-        throw new Error("Expected array data not received");
-      }
-
-      const headers = rawData[5];
-      const dataRows = rawData.length > 6 ? rawData.slice(6) : [];
-
-      const getIndex = (headerName) => {
-        const index = headers.findIndex(
-          (h) =>
-            h && h.toString().trim().toLowerCase() === headerName.toLowerCase()
-        );
-        return index;
-      };
-
-      const processedData = dataRows.map((row) => ({
-        timestamp: row[getIndex("Timestamp")] || "",
-        joiningNo: row[getIndex("Joining ID")] || "",
-        indentNo: row[getIndex("Indent No")] || "",
-        enquiryNo: row[getIndex("Enquiry No")] || "",
-        candidateName: row[getIndex("Name As Per Aadhar")] || "",
-        fatherName: row[getIndex("Father / Husband name")] || "",
-        dateOfJoining: row[getIndex("Date Of Joining")] || "",
-        joiningPlace: row[getIndex("Joining Place")] || "",
-        designation: row[getIndex("Designation")] || "",
-        department: row[getIndex("Department")] || "",
-        aadharPhoto: row[getIndex("Aadhar Frontside Photo")] || "",
-        panCard: row[getIndex("Pan card")] || "",
-        candidatePhoto: row[getIndex("Candidate's Photo")] || "",
-        currentAddress: row[getIndex("Current Address")] || "",
-        addressAsPerAadhar: row[getIndex("Address As Per Aadhar Card")] || "",
-        bodAsPerAadhar: row[getIndex("Date Of Birth As Per Aadhar Card")] || "",
-        gender: row[getIndex("Gender")] || "",
-        mobileNo: row[getIndex("Mobile No.")] || "",
-        familyMobileNo: row[getIndex("Family Mobile No.")] || "",
-        relationWithFamily:
-          row[getIndex("Relationship With Family Person")] || "",
-        pfId: row[getIndex("Past Pf Id No. (If Any)")] || "",
-        accountNo: row[getIndex("Current Bank A.C No.")] || "",
-        ifscCode: row[getIndex("Ifsc Code")] || "",
-        branchName: row[getIndex("Branch Name")] || "",
-        passbookPhoto: row[getIndex("Photo Of Front Bank Passbook")] || "",
-        email: row[getIndex("Personal Email-Id")] || "",
-        esicNo: row[getIndex("ESIC No (IF Any)")] || "",
-        qualification: row[getIndex("Highest Qualification")] || "",
-        pfEligible: row[getIndex("PF Eligible")] || "",
-        esicEligible: row[getIndex("ESIC Eligible")] || "",
-        companyName: row[getIndex("Joining Company Name")] || "",
-        emailToBeIssue: row[getIndex("Email ID To Be Issue")] || "",
-        issueMobile: row[getIndex("Issue Mobile")] || "",
-        issueLaptop: row[getIndex("Issue Laptop")] || "",
-        aadharNo: row[getIndex("Aadhar Card No")] || "",
-        modeOfAttendance: row[getIndex("Mode Of Attendance")] || "",
-        quaficationPhoto: row[getIndex("Quafication Photo")] || "",
-        paymentMode: row[getIndex("Payment Mode")] || "",
-        salarySlip: row[getIndex("Salary Slip")] || "",
-        resumeCopy: row[getIndex("Resume Copy")] || "",
-        plannedDate: row[getIndex("Planned Date")] || "",
-        actual: row[getIndex("Actual")] || "",
-      }));
-
-      const pendingTasks = processedData.filter(
-        (task) => task.plannedDate && !task.actual
-      );
-      console.log("Processed joining data:", processedData);
-      setPendingData(pendingTasks);
-
-      const historyTasks = processedData.filter(
-        (task) => task.plannedDate && task.actual
-      );
-      setHistoryData(historyTasks);
-    } catch (error) {
-      console.error("Error fetching joining data:", error);
-      setError(error.message);
-      toast.error(`Failed to load joining data: ${error.message}`);
-    } finally {
+      setPendingData(mockJoiningData.filter(task => task.plannedDate && !task.actual));
+      setHistoryData(mockJoiningData.filter(task => task.plannedDate && task.actual));
+      
       setLoading(false);
       setTableLoading(false);
-    }
+    }, 600);
   };
 
   // Fetch previous assets data from Assets sheet
-  const fetchAssetsData = async (employeeId) => {
-    try {
-      const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=Assets&action=fetch"
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        return null;
-      }
-
-      const data = result.data || result;
-      if (!Array.isArray(data) || data.length < 2) {
-        return null;
-      }
-
-      // Find the row with matching employee ID (column B, index 1)
-      const matchingRow = data.find((row, index) => {
-        if (index === 0) return false; // Skip header row
-        return row[1]?.toString().trim() === employeeId?.toString().trim();
-      });
-
-      if (matchingRow) {
-        return {
-          punchCode: matchingRow[10] || "",
-          emailId: matchingRow[3] || "",
-          emailPassword: matchingRow[4] || "",
-          laptop: matchingRow[5] || "",
-          mobile: matchingRow[6] || "",
-          vehicle: matchingRow[7] || "",
-          other: matchingRow[8] || "",
-          manualImageUrl: matchingRow[9] || "",
-          offerLetterImageUrl: matchingRow[11] || "", // Column L
-          welcomeMeetingImageUrl: matchingRow[12] || "", // Column M
-          pfEsicImageUrl: matchingRow[13] || "" // Column N
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error fetching assets data:", error);
-      return null;
-    }
+  const fetchAssetsData = (employeeId) => {
+    // Simulate fetching from Assets sheet
+    return Promise.resolve({
+      punchCode: "1234",
+      emailId: "employee@company.com",
+      emailPassword: "password123",
+      laptop: "MacBook Pro",
+      mobile: "iPhone 13",
+      vehicle: "None",
+      other: "",
+      manualImageUrl: "",
+      offerLetterImageUrl: "",
+      welcomeMeetingImageUrl: "",
+      pfEsicImageUrl: ""
+    });
   };
 
 
   // Upload image to Google Drive
-  const uploadImageToDrive = async (file, fileName) => {
-    try {
-      const reader = new FileReader();
-      return new Promise((resolve, reject) => {
-        reader.onload = async () => {
-          try {
-            const base64Data = reader.result;
-            const response = await fetch(
-              "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                  action: "uploadFile",
-                  base64Data: base64Data,
-                  fileName: fileName,
-                  mimeType: file.type,
-                  folderId: DRIVE_FOLDER_ID,
-                }).toString(),
-              }
-            );
-
-            const result = await response.json();
-            if (result.success) {
-              resolve(result.fileUrl);
-            } else {
-              reject(new Error(result.error || "Upload failed"));
-            }
-          } catch (error) {
-            reject(error);
-          }
-        };
-        reader.onerror = () => reject(new Error("Failed to read file"));
-        reader.readAsDataURL(file);
-      });
-    } catch (error) {
-      throw new Error(`Upload failed: ${error.message}`);
-    }
-  };
+  // uploadImageToDrive removed for offline demo
 
   useEffect(() => {
     fetchJoiningData();
   }, []);
 
-  const handleAfterJoiningClick = async (item) => {
-    // Reset form data first
-    setFormData({
-      checkSalarySlipResume: false,
-      offerLetterReceived: false,
-      welcomeMeeting: false,
-      biometricAccess: false,
-      punchCode: "", // Initialize punch code
-      officialEmailId: false,
-      emailId: "",
-      emailPassword: "",
-      assignAssets: false,
-      laptop: "",
-      mobile: "",
-      vehicle: "",
-      other: "",
-      manualImage: null,
-      manualImageUrl: "",
-      pfEsic: false,
-      companyDirectory: false,
-      assets: [],
-    });
-
+  const handleAfterJoiningClick = (item) => {
     setSelectedItem(item);
     setShowModal(true);
     setLoading(true);
 
-    try {
-      // Fetch previous assets data first
-      const assetsData = await fetchAssetsData(item.joiningNo);
-
-      const fullDataResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=JOINING&action=fetch"
-      );
-
-      if (!fullDataResponse.ok) {
-        throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
-      }
-
-      const fullDataResult = await fullDataResponse.json();
-      const allData = fullDataResult.data || fullDataResult;
-
-      // Look for header row with "Joining ID" instead of "Employee ID"
-      let headerRowIndex = allData.findIndex((row) =>
-        row.some((cell) =>
-          cell?.toString().trim().toLowerCase().includes("joining id")
-        )
-      );
-      if (headerRowIndex === -1) headerRowIndex = 5;
-
-      const headers = allData[headerRowIndex].map((h) => h?.toString().trim());
-
-      // Use "Joining ID" instead of "Employee ID"
-      const employeeIdIndex = headers.findIndex(
-        (h) => h?.toLowerCase() === "joining id"
-      );
-      if (employeeIdIndex === -1) {
-        throw new Error("Could not find 'Joining ID' column");
-      }
-
-      const rowIndex = allData.findIndex(
-        (row, idx) =>
-          idx > headerRowIndex &&
-          row[employeeIdIndex]?.toString().trim() ===
-          item.joiningNo?.toString().trim()
-      );
-
-      if (rowIndex === -1)
-        throw new Error(`Employee ${item.joiningNo} not found`);
-
-      // Updated column indices
-      const actualColumnIndex = 27; // Column AB (0-based index: 27)
-      const startColumnIndex = 29; // Column AD (0-based index: 29)
-
-      const currentValues = {
-        checkSalarySlipResume:
-          allData[rowIndex][startColumnIndex] // Column AD
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-        offerLetterReceived:
-          allData[rowIndex][startColumnIndex + 1] // Column AE
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-        welcomeMeeting:
-          allData[rowIndex][startColumnIndex + 2] // Column AF
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-        biometricAccess:
-          allData[rowIndex][startColumnIndex + 3] // Column AG
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-        officialEmailId:
-          allData[rowIndex][startColumnIndex + 4] // Column AH
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-        assignAssets:
-          allData[rowIndex][startColumnIndex + 5] // Column AI
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-        pfEsic:
-          allData[rowIndex][startColumnIndex + 6] // Column AJ
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-        companyDirectory:
-          allData[rowIndex][startColumnIndex + 7] // Column AK
-            ?.toString()
-            .trim()
-            .toLowerCase() === "yes",
-      };
-
-      // Merge with assets data if available
-      const finalFormData = {
-        ...currentValues,
-        punchCode: assetsData?.punchCode || "",
-        emailId: assetsData?.emailId || "",
-        emailPassword: assetsData?.emailPassword || "",
-        laptop: assetsData?.laptop || "",
-        mobile: assetsData?.mobile || "",
-        vehicle: assetsData?.vehicle || "",
-        other: assetsData?.other || "",
-        manualImageUrl: assetsData?.manualImageUrl || "",
-        offerLetterImageUrl: assetsData?.offerLetterImageUrl || "",
-        welcomeMeetingImageUrl: assetsData?.welcomeMeetingImageUrl || "",
-        pfEsicImageUrl: assetsData?.pfEsicImageUrl || "",
+    // Simulate fetching current values
+    setTimeout(() => {
+      setFormData({
+        checkSalarySlipResume: true,
+        offerLetterReceived: true,
+        welcomeMeeting: false,
+        biometricAccess: false,
+        punchCode: "1001",
+        officialEmailId: false,
+        emailId: "",
+        emailPassword: "",
+        assignAssets: false,
+        laptop: "",
+        mobile: "",
+        vehicle: "",
+        other: "",
         manualImage: null,
-        offerLetterImage: null,
-        welcomeMeetingImage: null,
-        pfEsicImage: null,
+        manualImageUrl: "",
+        pfEsic: false,
+        companyDirectory: false,
         assets: [],
-      };
-
-      setFormData(prev => ({
-        ...prev,
-        ...finalFormData
-      }));
-
-    } catch (error) {
-      console.error("Error fetching current values:", error);
-      // Keep the default reset values if there's an error
-      toast.error("Failed to load current values");
-    } finally {
+      });
       setLoading(false);
-    }
+    }, 400);
   };
 
   const handleCheckboxChange = (name) => {
@@ -436,89 +156,10 @@ const AfterJoiningWork = () => {
   };
 
   // Save assets data to Assets sheet
-  const saveAssetsData = async (employeeId, employeeName, assetsData) => {
-    try {
-      const now = new Date();
-      const timestamp = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-
-      const rowData = [
-        timestamp,
-        employeeId,
-        employeeName,
-        assetsData.emailId || "",
-        assetsData.emailPassword || "",
-        assetsData.laptop || "",
-        assetsData.mobile || "",
-        assetsData.vehicle || "",
-        assetsData.other || "",
-        assetsData.manualImageUrl || "",
-        assetsData.punchCode || "",
-        assetsData.offerLetterImageUrl || "", // Column L
-        assetsData.welcomeMeetingImageUrl || "", // Column M
-        assetsData.pfEsicImageUrl || "" // Column N
-      ];
-
-      // First, check if record exists
-      const existingData = await fetchAssetsData(employeeId);
-
-      if (existingData) {
-        // Update existing record - find the row and update it
-        const fetchResponse = await fetch(
-          "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=Assets&action=fetch"
-        );
-        const result = await fetchResponse.json();
-        const data = result.data || result;
-
-        const rowIndex = data.findIndex((row, index) => {
-          if (index === 0) return false; // Skip header
-          return row[1]?.toString().trim() === employeeId?.toString().trim();
-        });
-
-        if (rowIndex !== -1) {
-          // Update existing row
-          const response = await fetch(
-            "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "Assets",
-                action: "update",
-                rowIndex: (rowIndex + 1).toString(),
-                rowData: JSON.stringify(rowData),
-              }).toString(),
-            }
-          );
-          return await response.json();
-        }
-      }
-
-      // Insert new record
-      const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            sheetName: "Assets",
-            action: "insert",
-            rowData: JSON.stringify(rowData),
-          }).toString(),
-        }
-      );
-
-      return await response.json();
-    } catch (error) {
-      throw new Error(`Failed to save assets data: ${error.message}`);
-    }
-  };
+  // saveAssetsData removed for offline demo
 
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
     setSubmitting(true);
@@ -529,117 +170,8 @@ const AfterJoiningWork = () => {
       return;
     }
 
-    try {
-      // Upload manual image if new file selected (only for company directory)
-      // Upload images if new files selected
-      let manualImageUrl = formData.manualImageUrl;
-      let offerLetterImageUrl = formData.offerLetterImageUrl;
-      let welcomeMeetingImageUrl = formData.welcomeMeetingImageUrl;
-      let pfEsicImageUrl = formData.pfEsicImageUrl;
-
-      if (formData.manualImage) {
-        try {
-          manualImageUrl = await uploadImageToDrive(
-            formData.manualImage,
-            `${selectedItem.joiningNo}_manual_${Date.now()}.${formData.manualImage.name.split('.').pop()}`
-          );
-        } catch (error) {
-          toast.error(`Failed to upload manual image: ${error.message}`);
-        }
-      }
-
-      if (formData.offerLetterImage) {
-        try {
-          offerLetterImageUrl = await uploadImageToDrive(
-            formData.offerLetterImage,
-            `${selectedItem.joiningNo}_offerletter_${Date.now()}.${formData.offerLetterImage.name.split('.').pop()}`
-          );
-        } catch (error) {
-          toast.error(`Failed to upload offer letter image: ${error.message}`);
-        }
-      }
-
-      if (formData.welcomeMeetingImage) {
-        try {
-          welcomeMeetingImageUrl = await uploadImageToDrive(
-            formData.welcomeMeetingImage,
-            `${selectedItem.joiningNo}_welcomemeeting_${Date.now()}.${formData.welcomeMeetingImage.name.split('.').pop()}`
-          );
-        } catch (error) {
-          toast.error(`Failed to upload welcome meeting image: ${error.message}`);
-        }
-      }
-
-      if (formData.pfEsicImage) {
-        try {
-          pfEsicImageUrl = await uploadImageToDrive(
-            formData.pfEsicImage,
-            `${selectedItem.joiningNo}_pfesic_${Date.now()}.${formData.pfEsicImage.name.split('.').pop()}`
-          );
-        } catch (error) {
-          toast.error(`Failed to upload PF/ESIC image: ${error.message}`);
-        }
-      }
-
-      // Save assets data
-      await saveAssetsData(selectedItem.joiningNo, selectedItem.candidateName, {
-        emailId: formData.emailId,
-        emailPassword: formData.emailPassword,
-        laptop: formData.laptop,
-        mobile: formData.mobile,
-        vehicle: formData.vehicle,
-        other: formData.other,
-        manualImageUrl: manualImageUrl,
-        punchCode: formData.punchCode,
-        offerLetterImageUrl: offerLetterImageUrl,
-        welcomeMeetingImageUrl: welcomeMeetingImageUrl,
-        pfEsicImageUrl: pfEsicImageUrl
-      });
-
-      // Continue with existing logic for updating JOINING sheet
-      const fullDataResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=JOINING&action=fetch"
-      );
-      if (!fullDataResponse.ok) {
-        throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
-      }
-
-      const fullDataResult = await fullDataResponse.json();
-      const allData = fullDataResult.data || fullDataResult;
-      let headerRowIndex = allData.findIndex((row) =>
-        row.some((cell) =>
-          cell?.toString().trim().toLowerCase().includes("joining id")
-        )
-      );
-      if (headerRowIndex === -1) headerRowIndex = 5;
-
-      const headers = allData[headerRowIndex].map((h) => h?.toString().trim());
-      const employeeIdIndex = headers.findIndex(
-        (h) => h?.toLowerCase() === "joining id"
-      );
-      if (employeeIdIndex === -1) {
-        throw new Error("Could not find 'Joining ID' column");
-      }
-
-      const rowIndex = allData.findIndex(
-        (row, idx) =>
-          idx > headerRowIndex &&
-          row[employeeIdIndex]?.toString().trim() ===
-          selectedItem.joiningNo?.toString().trim()
-      );
-      if (rowIndex === -1)
-        throw new Error(`Employee ${selectedItem.joiningNo} not found`);
-
-      const now = new Date();
-      // Format for display: DD/MM/YYYY
-      const formattedTimestamp = `${now.getDate()}/${now.getMonth() + 1
-        }/${now.getFullYear()}`;
-
-      // Format for Google Sheets as a proper date object (YYYY-MM-DD format)
-      const formattedDateForSheets = `${now.getFullYear()}-${(now.getMonth() + 1)
-        .toString()
-        .padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
-
+    // Simulate submission
+    setTimeout(() => {
       const allFieldsYes =
         formData.checkSalarySlipResume &&
         formData.offerLetterReceived &&
@@ -650,91 +182,20 @@ const AfterJoiningWork = () => {
         formData.pfEsic &&
         formData.companyDirectory;
 
-      // Updated column indices
-      const actualColumnIndex = 27; // Column AB (0-based index: 27)
-      const startColumnIndex = 29; // Column AD (0-based index: 29)
-
-      const updatePromises = [];
-
       if (allFieldsYes) {
-        updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "JOINING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: (actualColumnIndex + 1).toString(), // Column AB
-                value: formattedDateForSheets, // Send as YYYY-MM-DD format
-              }).toString(),
-            }
-          )
-        );
-      }
-
-      const fields = [
-        { value: formData.checkSalarySlipResume ? "Yes" : "No", offset: 0 }, // Column AD
-        { value: formData.offerLetterReceived ? "Yes" : "No", offset: 1 }, // Column AE
-        { value: formData.welcomeMeeting ? "Yes" : "No", offset: 2 }, // Column AF
-        { value: formData.biometricAccess ? "Yes" : "No", offset: 3 }, // Column AG
-        { value: formData.officialEmailId ? "Yes" : "No", offset: 4 }, // Column AH
-        { value: formData.assignAssets ? "Yes" : "No", offset: 5 }, // Column AI
-        { value: formData.pfEsic ? "Yes" : "No", offset: 6 }, // Column AJ
-        { value: formData.companyDirectory ? "Yes" : "No", offset: 7 }, // Column AK
-      ];
-
-      fields.forEach((field) => {
-        updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "JOINING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: (startColumnIndex + field.offset + 1).toString(),
-                value: field.value,
-              }).toString(),
-            }
-          )
-        );
-      });
-
-      const responses = await Promise.all(updatePromises);
-      const results = await Promise.all(responses.map((r) => r.json()));
-
-      const hasError = results.some((result) => !result.success);
-      if (hasError) {
-        console.error("Some cell updates failed:", results);
-        throw new Error("Some cell updates failed");
-      }
-
-      if (allFieldsYes) {
-        toast.success("All conditions met! Data saved and actual date updated successfully.");
+        // Move to history
+        const updatedItem = { ...selectedItem, actual: new Date().toISOString().split('T')[0] };
+        setHistoryData(prev => [updatedItem, ...prev]);
+        setPendingData(prev => prev.filter(item => item.joiningNo !== selectedItem.joiningNo));
+        toast.success("All conditions met! Record moved to history.");
       } else {
-        toast.success(
-          "Data saved successfully. Actual date will be updated when all conditions are met."
-        );
+        toast.success("Onboarding task updated locally.");
       }
 
       setShowModal(false);
-      fetchJoiningData();
-    } catch (error) {
-      console.error("Update error:", error);
-      toast.error(`Update failed: ${error.message}`);
-    } finally {
       setLoading(false);
       setSubmitting(false);
-    }
+    }, 1000);
   };
 
 

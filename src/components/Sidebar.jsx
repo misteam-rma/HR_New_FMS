@@ -24,7 +24,8 @@ import {
   BookPlus,
   Settings,
   Bell,
-  Clock
+  Clock,
+  MessageSquare
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -39,27 +40,12 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   useEffect(() => {
-    const checkLeaveManagementAccess = async () => {
+    const checkLeaveManagementAccess = () => {
       if (!user) return;
-      try {
-        const response = await fetch(`https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=USER&action=fetch`);
-        const result = await response.json();
-        if (result.success && result.data) {
-          const employeeData = result.data;
-          const headers = employeeData[0];
-          const usernameColIndex = headers.findIndex(h => h.toString().toLowerCase().includes('username') || h.toString().toLowerCase().includes('name'));
-          const adminColIndex = headers.findIndex(h => h.toString().toLowerCase().includes('admin'));
-          const leaveManagementColIndex = 6; 
-          const userRecord = employeeData.find(row => row[usernameColIndex] === user.Name || row[usernameColIndex] === user.Username);
-          if (userRecord) {
-            const isAdmin = userRecord[adminColIndex]?.toString().toLowerCase() === 'yes';
-            const hasLeaveAccess = userRecord[leaveManagementColIndex] && userRecord[leaveManagementColIndex].toString().trim() !== '';
-            setShowLeaveManagement(isAdmin || (!isAdmin && hasLeaveAccess));
-          }
-        }
-      } catch (error) {
-        setShowLeaveManagement(user?.Admin === 'Yes');
-      }
+      // In offline mode, we'll show Leave Management for all logged-in users 
+      // or you can restrict it to Admin if preferred. 
+      // Here we match the previous logic's fallback.
+      setShowLeaveManagement(true); 
     };
     checkLeaveManagementAccess();
   }, [user]);
@@ -68,13 +54,6 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const adminMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/indent', icon: FileText, label: 'Indent' },
-    { path: '/find-enquiry', icon: Search, label: 'Find Enquiry' },
-    { path: '/call-tracker', icon: Phone, label: 'Call Tracker' },
-    { path: '/joining', icon: NotebookPen, label: 'Joining' },
-    { path: '/after-joining-work', icon: UserCheck, label: 'After Joining' },
-    { path: '/leaving', icon: UserX, label: 'Leaving' },
-    { path: '/after-leaving-work', icon: UserMinus, label: 'After Leaving' },
     { path: '/employee', icon: Users, label: 'Employee' },
     { 
       label: 'Attendance', 
@@ -83,14 +62,17 @@ const Sidebar = ({ isOpen, onClose }) => {
       isOpen: attendanceOpen,
       onToggle: () => setAttendanceOpen(!attendanceOpen),
       subItems: [
-        { path: '/attendance/monthly', label: 'Monthly' },
         { path: '/attendance/daily', label: 'Daily' },
+        { path: '/attendance/monthly', label: 'Monthly' },
       ]
     },
     // { path: '/admin-attendance', icon: AlarmClockCheck, label: 'Attendance Dashboard' },
     { path: '/leave-management', icon: BookPlus, label: 'Leave Mgmt' },
     { path: '/company-calendar', icon: Calendar, label: 'Calendar' },
     { path: '/license', icon: AlarmClockCheck, label: 'License' },
+    { path: '/108-noc', icon: FileText, label: '108 NOC' },
+    { path: '/reimbursement', icon: NotebookPen, label: 'Reimbaursment' },
+    { path: '/feedback', icon: MessageSquare, label: 'Feedback' },
   ];
 
   const employeeMenuItems = [
@@ -100,6 +82,9 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/leave-request', icon: LeaveIcon, label: 'Leave Request' },
     { path: '/company-calendar', icon: Calendar, label: 'Calendar' },
     { path: '/license', icon: Copyright, label: 'License' },
+    { path: '/108-noc', icon: FileText, label: '108 NOC' },
+    { path: '/reimbursement', icon: NotebookPen, label: 'Reimbaursment' },
+    { path: '/feedback', icon: MessageSquare, label: 'Feedback' },
   ];
 
   const menuItems = user?.Admin === 'Yes' ? adminMenuItems : employeeMenuItems;

@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Filter, Search, Clock, CheckCircle, X, User, Briefcase, Calendar, AlertCircle, ArrowRight, Layout, History, ChevronDown, Check, MoreHorizontal, LogOut, Share2, Download, Phone } from 'lucide-react';
+import { 
+  Clock, History, Search, Filter, Calendar, ChevronDown, Check, 
+  AlertCircle, ArrowRight, User, LogOut, X, FileText
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DataTable from '../components/DataTable/DataTable';
+import TableFilters from '../components/DataTable/TableFilters';
+import TableTabs from '../components/DataTable/TableTabs';
 
 const Leaving = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -10,118 +16,49 @@ const Leaving = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [pendingData, setPendingData] = useState([]);
   const [historyData, setHistoryData] = useState([]);
-  const [tableLoading, setTableLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  
   const [formData, setFormData] = useState({
     dateOfLeaving: '',
     mobileNumber: '',
     reasonOfLeaving: ''
   });
 
-  // New filtering and pagination states
   const [filterDepartment, setFilterDepartment] = useState('');
-  const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
   const [filterDate, setFilterDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
 
-  const fetchJoiningData = async () => {
-    setTableLoading(true);
-    try {
-      const response = await fetch('https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=JOINING&action=fetch');
-      const text = await response.text();
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (e) {
-        console.error("fetchJoiningData Parse Error. Raw:", text);
-        throw new Error("Invalid JOINING data format");
-      }
-
-      if (result.success) {
-        const rawData = result.data || result;
-        const dataRows = rawData.length > 6 ? rawData.slice(6) : [];
-        const processed = dataRows.map((row, index) => ({
-          rowIndex: index + 7,
-          employeeNo: row[1] || '',
-          candidateName: row[2] || '',
-          fatherName: row[3] || '',
-          dateOfJoining: row[4] || '',
-          designation: row[5] || '',
-          aadharPhoto: row[6] || '',
-          candidatePhoto: row[7] || '',
-          currentAddress: row[8] || '',
-          dob: row[9] || '',
-          gender: row[10] || '',
-          mobileNo: row[11] || '',
-          familyMobileNo: row[12] || '',
-          relationship: row[13] || '',
-          bankAccount: row[14] || '',
-          ifscCode: row[15] || '',
-          branchName: row[16] || '',
-          bankPassbookPhoto: row[17] || '',
-          personalEmail: row[18] || '',
-          qualification: row[19] || '',
-          department: row[20] || '',
-          equipment: row[21] || '',
-          aadharCardNo: row[22] || '',
-          leavingDate: row[24] || '',
-          firmName: row[25] || '', // Fallback
-          workingLocation: row[26] || '', // Fallback
-        })).filter(task => !task.leavingDate); // Filter strictly by Column Y being null
-        setPendingData(processed);
-      }
-    } catch (err) { 
-      console.error("fetchJoiningData Error:", err);
-      setError(err.message); 
-    } finally { 
-      setTableLoading(false); 
-    }
+  const fetchJoiningData = () => {
+    setLoading(true);
+    // Simulate delay
+    setTimeout(() => {
+      const mockJoiningEntries = [
+        { rowIndex: 7, employeeNo: "EMP-101", candidateName: "Rahul Sharma", fatherName: "S.P. Sharma", dateOfJoining: "15/01/2023", designation: "Frontend Developer", department: "Engineering", mobileNo: "9876543210", leavingDate: "" },
+        { rowIndex: 8, employeeNo: "EMP-102", candidateName: "Priya Singh", fatherName: "R.K. Singh", dateOfJoining: "10/02/2023", designation: "HR Manager", department: "Human Resources", mobileNo: "9876543211", leavingDate: "" }
+      ];
+      setPendingData(mockJoiningEntries);
+      setLoading(false);
+    }, 600);
   };
 
-  const fetchLeavingData = async () => {
-    try {
-      const response = await fetch('https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=LEAVING&action=fetch');
-      const text = await response.text();
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (e) {
-        console.error("fetchLeavingData Parse Error. Raw:", text);
-        return;
-      }
-
-      if (result.success) {
-        const rawData = result.data || result;
-        const dataRows = rawData.length > 6 ? rawData.slice(6) : [];
-        const processed = dataRows.map(row => ({
-          employeeId: row[1] || '',
-          name: row[2] || '',
-          dateOfLeaving: row[3] || '',
-          mobileNo: row[4] || '',
-          reasonOfLeaving: row[5] || '',
-          firmName: row[6] || '',
-          fatherName: row[7] || '',
-          dateOfJoining: row[8] || '',
-          workingLocation: row[9] || '',
-          designation: row[10] || '',
-          department: row[11] || '',
-        }));
-        setHistoryData(processed);
-      }
-    } catch (err) { console.error("fetchLeavingData Error:", err); }
+  const fetchLeavingData = () => {
+    // Simulate delay
+    setTimeout(() => {
+      const mockLeavingHistory = [
+        { employeeId: "EMP-099", name: "Vikram Seth", dateOfLeaving: "20/03/2024", mobileNo: "9876543299", reasonOfLeaving: "Family relocation", firmName: "SBH", fatherName: "D. Seth", dateOfJoining: "01/01/2022", workingLocation: "Raipur", designation: "Accountant", department: "Finance" }
+      ];
+      setHistoryData(mockLeavingHistory);
+    }, 600);
   };
 
-  useEffect(() => { fetchJoiningData(); fetchLeavingData(); }, []);
+  useEffect(() => { 
+    fetchJoiningData(); 
+    fetchLeavingData(); 
+  }, []);
 
-  // Reset page on tab change
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setCurrentPage(1);
-  };
-
-  // Unique departments for filtering
   const allDepartments = [
     ...new Set([
       ...pendingData.map(i => i.department),
@@ -129,18 +66,15 @@ const Leaving = () => {
     ])
   ].filter(Boolean).sort();
 
-  const filterData = (data) => {
+  const filterDataItems = (data) => {
     return data.filter(item => {
       const matchesSearch = 
         (item.candidateName || item.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.employeeNo || item.employeeId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.designation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.department || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.aadharNo || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (item.department || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesDept = !filterDepartment || item.department === filterDepartment;
-      
-      // Basic date matching (checks if date string includes filter string)
       const matchesDate = !filterDate || 
         (item.dateOfJoining && item.dateOfJoining.includes(filterDate)) ||
         (item.dateOfLeaving && item.dateOfLeaving.includes(filterDate));
@@ -149,16 +83,10 @@ const Leaving = () => {
     });
   };
 
-  const displayPendingFiltered = filterData(pendingData);
-  const displayHistoryFiltered = filterData(historyData);
-
-  const currentItems = activeTab === 'pending' ? displayPendingFiltered : displayHistoryFiltered;
-  
-  // Pagination logic
-  const totalPages = Math.ceil(currentItems.length / itemsPerPage);
+  const filteredItems = filterDataItems(activeTab === 'pending' ? pendingData : historyData);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const paginatedItems = currentItems.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleLeavingClick = (item) => {
     setSelectedItem(item);
@@ -166,53 +94,100 @@ const Leaving = () => {
     setShowModal(true);
   };
 
-  const paginate = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    // window.scrollTo({ top: 0, behavior: 'smooth' }); // Optional, kept for parity if desired
-  };
+  const pendingColumns = [
+    { 
+      header: "Action", 
+      accessor: (item) => (
+        <button
+          onClick={() => handleLeavingClick(item)}
+          className="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-rose-700 transition-all shadow-md active:scale-95 flex items-center gap-2 mx-auto"
+        >
+          Process Exit
+          <ArrowRight size={10} />
+        </button>
+      )
+    },
+    { header: "Joining ID", accessor: "employeeNo", className: "font-semibold text-slate-700" },
+    { header: "Candidate Name", accessor: "candidateName", className: "font-bold text-slate-800" },
+    { header: "Father Name", accessor: "fatherName" },
+    { header: "Date Of Joining", accessor: "dateOfJoining" },
+    { 
+      header: "Designation", 
+      accessor: (item) => (
+        <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-bold uppercase">{item.designation}</span>
+      )
+    },
+    { 
+      header: "Department", 
+      accessor: (item) => (
+        <span className="font-bold text-slate-600 tracking-tight">{item.department}</span>
+      )
+    },
+    { header: "Mobile No.", accessor: "mobileNo", className: "font-bold text-slate-700" },
+  ];
 
-  const renderPaginationNav = () => (
-    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px w-full justify-center sm:w-auto" aria-label="Pagination">
-      <button
-        onClick={() => paginate(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="relative inline-flex items-center px-1.5 py-1 sm:px-2 sm:py-1 rounded-l-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <span className="sr-only">Previous</span>
-        <svg className="h-4 w-4 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-        </svg>
-      </button>
+  const historyColumns = [
+    { header: "Emp ID", accessor: "employeeId", className: "font-semibold text-slate-700" },
+    { header: "Candidate Name", accessor: "name", className: "font-bold text-slate-800" },
+    { header: "Joining Date", accessor: "dateOfJoining" },
+    { 
+      header: "Leaving Date", 
+      accessor: (item) => (
+        <span className="text-rose-600 font-bold">{item.dateOfLeaving}</span>
+      )
+    },
+    { header: "Position", accessor: "designation" },
+    { header: "Department", accessor: "department" },
+    { 
+      header: "Reason", 
+      accessor: (item) => (
+        <div className="max-w-[200px] truncate italic text-slate-500" title={item.reasonOfLeaving}>
+          "{item.reasonOfLeaving}"
+        </div>
+      )
+    },
+  ];
 
-      {[...Array(Math.max(1, totalPages))].map((_, i) => {
-        const pageNum = i + 1;
-        if (pageNum === 1 || pageNum === totalPages || (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)) {
-          return (
-            <button
-              key={pageNum}
-              onClick={() => paginate(pageNum)}
-              className={`relative inline-flex items-center px-3 py-1 sm:px-3.5 sm:py-1.5 border text-xs sm:text-sm font-medium ${currentPage === pageNum ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}
-            >
-              {pageNum}
-            </button>
-          );
-        } else if ((pageNum === currentPage - 2 && pageNum > 1) || (pageNum === currentPage + 2 && pageNum < totalPages)) {
-          return <span key={pageNum} className="relative inline-flex items-center px-2 py-1 sm:px-3 sm:py-1 border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-700">...</span>;
-        }
-        return null;
-      })}
+  const renderMobileCard = (item) => (
+    <div className="p-4 space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-indigo-600 text-sm">#{item.employeeNo || item.employeeId}</span>
+          <span className="text-[10px] bg-slate-50 px-2 py-0.5 rounded text-indigo-600 font-bold uppercase tracking-wider">{item.department}</span>
+        </div>
+        {activeTab === 'pending' ? (
+          <button
+            onClick={() => handleLeavingClick(item)}
+            className="px-3 py-1 bg-rose-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-md active:scale-95"
+          >
+            Process Exit
+          </button>
+        ) : (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 uppercase tracking-widest">Exit Processed</span>
+        )}
+      </div>
 
-      <button
-        onClick={() => paginate(currentPage + 1)}
-        disabled={currentPage >= totalPages}
-        className="relative inline-flex items-center px-1.5 py-1 sm:px-2 sm:py-1 rounded-r-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <span className="sr-only">Next</span>
-        <svg className="h-4 w-4 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-        </svg>
-      </button>
-    </nav>
+      <div>
+        <div className="text-sm font-bold text-slate-800 tracking-tight">{item.candidateName || item.name}</div>
+        <div className="text-xs text-slate-500 mt-1">
+          <span className="text-slate-400 font-bold">{item.designation}</span> 
+          {activeTab === 'history' && <span className="ml-2 italic text-rose-500/70">Left on {item.dateOfLeaving}</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 pt-1 border-t border-slate-50">
+        <div>
+          <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-tighter">
+            {activeTab === 'pending' ? 'Joined' : 'Join Date'}
+          </span>
+          <span className="font-bold text-slate-700 text-xs">{item.dateOfJoining}</span>
+        </div>
+        <div className="text-right">
+          <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-tighter">Phone/ID</span>
+          <span className="font-bold text-slate-700 text-xs">{item.mobileNo || item.employeeId}</span>
+        </div>
+      </div>
+    </div>
   );
 
   const getCurrentTimestamp = () => {
@@ -226,7 +201,7 @@ const Leaving = () => {
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     if (e) e.preventDefault();
     if (!formData.dateOfLeaving || !formData.reasonOfLeaving) {
       toast.error("Please fill all required fields");
@@ -234,517 +209,88 @@ const Leaving = () => {
     }
 
     setSubmitting(true);
-    try {
-      const timestamp = getCurrentTimestamp();
+    // Simulate submission
+    setTimeout(() => {
+      const newHistoryItem = {
+        employeeId: selectedItem.employeeNo,
+        name: selectedItem.candidateName,
+        dateOfLeaving: formData.dateOfLeaving,
+        mobileNo: selectedItem.mobileNo,
+        reasonOfLeaving: formData.reasonOfLeaving,
+        firmName: selectedItem.firmName || '',
+        fatherName: selectedItem.fatherName || '',
+        dateOfJoining: selectedItem.dateOfJoining || '',
+        workingLocation: selectedItem.workingLocation || '',
+        designation: selectedItem.designation || '',
+        department: selectedItem.department || '',
+      };
+
+      setHistoryData(prev => [newHistoryItem, ...prev]);
+      setPendingData(prev => prev.filter(item => item.employeeNo !== selectedItem.employeeNo));
       
-      // Construct rowData array to match Sheet Columns A to L
-      const rowData = [
-        timestamp,                                       // A: Timestamp
-        selectedItem.employeeNo || '',                    // B: Employee ID
-        (selectedItem.candidateName || selectedItem.name) || '', // C: Name
-        formData.dateOfLeaving || '',                    // D: Date Of Leaving
-        selectedItem.mobileNo || '',                      // E: Mobile Number
-        formData.reasonOfLeaving || '',                  // F: Reason Of Leaving
-        selectedItem.firmName || '',                     // G: Firm Name
-        selectedItem.fatherName || '',                   // H: Father Name
-        selectedItem.dateOfJoining || '',                // I: Date Of Joining
-        selectedItem.workingLocation || '',              // J: Work Location
-        selectedItem.designation || '',                  // K: Designation
-        selectedItem.department || '',                   // L: Department
-      ];
-      
-      console.log("Submitting Exit RowData:", rowData);
-
-      // 1. Insert into LEAVING sheet using rowData format
-      const leavingResponse = await fetch('https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          action: 'insert',
-          sheetName: 'LEAVING',
-          rowData: JSON.stringify(rowData)
-        })
-      });
-
-      const responseText = await leavingResponse.text();
-      let leavingResult;
-      
-      try {
-        leavingResult = JSON.parse(responseText);
-      } catch (e) {
-        console.error("Critical: handleSubmit Parse Error. Raw Server Response:", responseText);
-        // Robust fallback: if response includes success indicators, treat as success
-        if (responseText.toLowerCase().includes("success") || responseText.trim().toLowerCase() === "ok") {
-          leavingResult = { success: true };
-        } else {
-          throw new Error(`Server Response Error: ${responseText.substring(0, 50)}...`);
-        }
-      }
-
-      if (leavingResult && leavingResult.success) {
-        // 2. Update JOINING sheet (set leaving date in Column Y)
-        await fetch('https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            action: 'update',
-            sheet: 'JOINING',
-            rowIndex: selectedItem.rowIndex,
-            leavingDate: formData.dateOfLeaving,
-          })
-        });
-
-        toast.success("Employee processed for exit successfully");
-        setShowModal(false);
-        await fetchJoiningData();
-        await fetchLeavingData();
-      } else {
-        throw new Error((leavingResult && leavingResult.error) || "Failed to process exit");
-      }
-    } catch (err) {
-      console.error("handleSubmit Caught Error:", err);
-      toast.error(err.message || "An error occurred during submission");
-    } finally {
-      setTimeout(() => setSubmitting(false), 500);
-    }
-  };
-
-  // Helper Component for Image Thumbnails
-  const PhotoCell = ({ url, label }) => {
-    if (!url || url === '' || url === 'N/A') return <span className="text-gray-400 text-[10px]">No Photo</span>;
-    return (
-      <div className="flex flex-col items-center gap-1">
-        <a 
-          href={url} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="relative w-8 h-8 rounded border border-gray-200 overflow-hidden hover:ring-2 hover:ring-indigo-400 transition-all shadow-sm"
-          title={`View ${label}`}
-        >
-          <img 
-            src={url} 
-            alt={label} 
-            className="w-full h-full object-cover" 
-            onError={(e) => { e.target.src = 'https://via.placeholder.com/40?text=ERR'; }}
-          />
-        </a>
-      </div>
-    );
+      toast.success("Employee processed for exit successfully");
+      setShowModal(false);
+      setSubmitting(false);
+    }, 1000);
   };
 
   return (
-    <div className="space-y-3 md:pb-4 mb-4">
-      {/* Unified "One Filter" Dashboard Toolbar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 md:gap-4 mb-2">
-        <div className="flex items-center gap-4">
-          <h1 className="hidden md:block text-2xl font-bold text-gray-800">Off-boarding</h1>
-
-          {/* Segmented Tab Control (Integrated into Filter Row) */}
-          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 shadow-sm self-start sm:self-center">
-            <button
-              onClick={() => { setActiveTab("pending"); setCurrentPage(1); }}
-              className={`flex items-center gap-2 py-1 px-4 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all duration-200 ${activeTab === "pending"
-                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
-            >
-              <Clock size={13} />
-              <span>Pending ({displayPendingFiltered.length})</span>
-            </button>
-            <button
-              onClick={() => { setActiveTab("history"); setCurrentPage(1); }}
-              className={`flex items-center gap-2 py-1 px-4 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all duration-200 ${activeTab === "history"
-                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
-            >
-              <History size={13} />
-              <span>History ({displayHistoryFiltered.length})</span>
-            </button>
-          </div>
+    <div className="space-y-4 md:pb-4 mb-4">
+      {/* Main Header & Filters */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Off-boarding</h1>
+           
+           <TableTabs 
+             activeTab={activeTab}
+             onTabChange={(id) => { setActiveTab(id); setCurrentPage(1); }}
+             tabs={[
+               { id: 'pending', label: `Pending Exit`, count: pendingData.length, icon: <Clock /> },
+               { id: 'history', label: `Exit History`, icon: <History /> }
+             ]}
+           />
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
-          {/* Search Section */}
-          <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search by name, ID or post..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full text-xs sm:text-sm shadow-sm transition-all"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 lg:flex lg:items-center gap-2 w-full sm:w-auto">
-            {/* Department Filter */}
-            <div className="relative col-span-1 min-w-[140px]">
-              <div
-                onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
-                className="flex items-center gap-2 h-9 px-3 border border-gray-300 rounded bg-white text-xs text-gray-700 cursor-pointer hover:border-indigo-500 transition shadow-sm relative overflow-hidden"
-              >
-                <Filter size={12} className="text-gray-400 shrink-0" />
-                <span className="truncate font-medium">{filterDepartment || "All Dept"}</span>
-                <ChevronDown size={14} className={`ml-auto text-gray-400 transition-transform ${isDeptDropdownOpen ? 'rotate-180' : ''}`} />
-              </div>
-
-              {isDeptDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsDeptDropdownOpen(false)}></div>
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden py-1 max-h-48 overflow-y-auto ring-1 ring-black ring-opacity-5">
-                    <div
-                      onClick={() => { setFilterDepartment(''); setIsDeptDropdownOpen(false); setCurrentPage(1); }}
-                      className={`px-3 py-2 text-xs cursor-pointer flex items-center justify-between transition-colors ${!filterDepartment ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
-                    >
-                      All Departments
-                      {!filterDepartment && <Check size={12} className="text-indigo-500" />}
-                    </div>
-                    {allDepartments.map((dept, index) => (
-                      <div
-                        key={index}
-                        onClick={() => { setFilterDepartment(dept); setIsDeptDropdownOpen(false); setCurrentPage(1); }}
-                        className={`px-3 py-2 text-xs cursor-pointer flex items-center justify-between transition-colors ${filterDepartment === dept ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
-                      >
-                        {dept}
-                        {filterDepartment === dept && <Check size={12} className="text-indigo-500" />}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Date Filter */}
-            <div className="relative col-span-1">
-              <div className="flex items-center gap-2 h-9 px-3 border border-gray-300 rounded bg-white text-xs text-gray-700 relative overflow-hidden shadow-sm hover:border-indigo-500 transition">
-                <Calendar size={12} className="text-gray-400 shrink-0" />
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => {
-                    setFilterDate(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full bg-transparent focus:outline-none text-[11px] font-medium cursor-pointer uppercase"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <TableFilters 
+          searchTerm={searchTerm}
+          onSearchChange={(val) => { setSearchTerm(val); setCurrentPage(1); }}
+          searchPlaceholder="Search by name, ID or post..."
+          filters={[
+            {
+              label: "All Departments",
+              type: 'select',
+              value: filterDepartment,
+              options: allDepartments.map(d => ({ label: d, value: d })),
+              onSelect: (val) => { setFilterDepartment(val); setCurrentPage(1); }
+            },
+            {
+              label: "Action Date",
+              type: 'date',
+              value: filterDate,
+              onSelect: (val) => { setFilterDate(val); setCurrentPage(1); }
+            }
+          ]}
+        />
       </div>
 
-      {/* Unified Main Content Container */}
-      <div className="overflow-hidden border border-gray-200 rounded-lg bg-white min-h-[530px] flex flex-col">
-        {tableLoading ? (
-          <div className="flex-1 flex items-center justify-center p-12">
-            <LoadingSpinner message="Retrieving exit records..." minHeight="450px" />
-          </div>
-        ) : (
-          <>
-            {activeTab === "pending" && (
-              <div className="flex-1 flex flex-col">
-                {/* Desktop View (Table + Footer combined) */}
-                <div className="hidden md:flex flex-col border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm">
-                  <div className="max-h-[calc(105vh-280px)] min-h-[530px] overflow-auto scrollbar-hide">
-                    <table className="w-max min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0 z-20">
-                        <tr>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap sticky left-0 z-30 bg-gray-100/90 backdrop-blur shadow-sm border-r border-gray-200">Action</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap sticky left-[125px] z-30 bg-gray-100/90 backdrop-blur shadow-sm border-r border-gray-200">Joining ID</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Name As Per Aadhar</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Father / Husband name</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Of Joining</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Designation</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Aadhar Frontside</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Candidate Photo</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Current Address</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">DOB (Aadhar)</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Gender</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Mobile No.</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Family Mobile</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Relationship</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Bank A.C No.</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">IFSC Code</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Branch Name</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Bank Passbook</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Personal Email</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Qualification</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Department</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Equipment</th>
-                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Aadhar Card No</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {paginatedItems.length === 0 ? (
-                          <tr>
-                            <td colSpan="23" className="px-4 py-24 text-center">
-                              <div className="flex flex-col items-center justify-center space-y-2">
-                                <LogOut size={40} className="text-gray-200" />
-                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest text-center">No pending exits found.</p>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedItems.map((item, idx) => (
-                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                              <td className="px-6 py-4 whitespace-nowrap text-center sticky left-0 z-10 bg-white/95 backdrop-blur group-hover:bg-gray-50/95 border-r border-gray-100 shadow-sm transition-colors">
-                                <button
-                                  onClick={() => handleLeavingClick(item)}
-                                  className="bg-rose-600 text-white px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider hover:bg-rose-700 transition-all shadow-md active:scale-95 flex items-center gap-2 mx-auto"
-                                >
-                                  Process Exit
-                                  <ArrowRight size={10} />
-                                </button>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 font-medium sticky left-[125px] z-10 bg-white/95 backdrop-blur group-hover:bg-gray-50/95 border-r border-gray-100 shadow-sm transition-colors">{item.employeeNo}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900 font-bold">{item.candidateName}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">{item.fatherName}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.dateOfJoining}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                                <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-bold uppercase">{item.designation}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <PhotoCell url={item.aadharPhoto} label="Aadhar" />
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <PhotoCell url={item.candidatePhoto} label="Candidate" />
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 max-w-[150px] truncate" title={item.currentAddress}>{item.currentAddress}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.dob}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.gender}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 font-bold">{item.mobileNo}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.familyMobileNo}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.relationship}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 font-mono tracking-tighter">{item.bankAccount}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 font-mono">{item.ifscCode}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.branchName}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <PhotoCell url={item.bankPassbookPhoto} label="Passbook" />
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-indigo-500 font-medium lowercase tracking-tighter">{item.personalEmail}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.qualification}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 font-bold tracking-tight">{item.department}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 tracking-tighter">{item.equipment}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 font-bold font-mono">{item.aadharCardNo}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {/* Desktop Pagination Footer */}
-                  <div className="px-4 py-3 bg-white border-t border-gray-200 flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-6 flex-wrap">
-                      <p className="text-[13px] text-gray-600 font-medium tracking-wide">
-                        Showing <span className="font-bold text-gray-900">{currentItems.length > 0 ? indexOfFirstItem + 1 : 0}</span> to <span className="font-bold text-gray-900">{Math.min(indexOfLastItem, currentItems.length)}</span> of <span className="font-bold text-gray-900">{currentItems.length}</span> records
-                      </p>
-                      <div className="flex items-center gap-2 h-5">
-                        <label className="text-[13px] text-gray-500 font-medium whitespace-nowrap">Rows per page:</label>
-                        <select
-                          value={itemsPerPage}
-                          onChange={(e) => {
-                            setItemsPerPage(Number(e.target.value));
-                            setCurrentPage(1);
-                          }}
-                          className="text-xs bg-transparent font-medium text-gray-700 outline-none cursor-pointer"
-                        >
-                          {[15, 30, 50, 100].map((val) => (
-                            <option key={val} value={val}>{val}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex items-center w-auto justify-end">
-                      {renderPaginationNav()}
-                    </div>
-                  </div>
-                </div>
+      <DataTable 
+        columns={activeTab === 'pending' ? pendingColumns : historyColumns}
+        data={currentItems}
+        loading={loading}
+        error={error}
+        onRetry={fetchJoiningData}
+        emptyMessage={activeTab === 'pending' ? "No pending exits found." : "No exit history recorded."}
+        renderMobileCard={renderMobileCard}
+        pagination={{
+          currentPage,
+          itemsPerPage,
+          totalItems: filteredItems.length,
+          onPageChange: (p) => { setCurrentPage(p); },
+          onItemsPerPageChange: (val) => { setItemsPerPage(val); setCurrentPage(1); }
+        }}
+      />
 
-                {/* Mobile Card View with Embedded Pagination */}
-                <div className="md:hidden flex flex-col h-[calc(100vh-240px)]">
-                  <div className="flex-1 p-2 space-y-3 overflow-y-auto scrollbar-hide">
-                    {paginatedItems.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-24">
-                        <p className="text-gray-500 text-lg">No pending exits found.</p>
-                      </div>
-                    ) : (
-                      paginatedItems.map((item, index) => (
-                        <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-2.5 space-y-1.5">
-                          {/* Top Bar */}
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-indigo-600 text-sm">#{item.employeeNo}</span>
-                              <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-medium uppercase tracking-wider">{item.department || 'N/A'}</span>
-                            </div>
-                            <button
-                              onClick={() => handleLeavingClick(item)}
-                              className="px-3 py-1 bg-rose-600 text-white rounded text-[10px] font-black uppercase tracking-wider shadow-sm active:scale-95"
-                            >
-                              Process Exit
-                            </button>
-                          </div>
-
-                          {/* Info Rows */}
-                          <div>
-                            <div className="text-sm font-bold text-gray-800 tracking-tight">{item.candidateName}</div>
-                            <div className="text-xs text-gray-600 mt-0.5"><span className="text-gray-400">Post:</span> {item.designation}</div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                            <div>
-                              <span className="block text-gray-400 text-[10px] uppercase tracking-tighter">Joined/Phone</span>
-                              <span className="font-medium text-gray-700 block text-[10px] truncate">{item.dateOfJoining}</span>
-                              <span className="font-medium text-gray-700 block text-[10px]">{item.mobileNo || "N/A"}</span>
-                            </div>
-                            <div>
-                              <span className="block text-gray-400 text-[10px] uppercase tracking-tighter">Gender/Aadhar</span>
-                              <span className="font-medium text-gray-700 block text-[10px]">{item.gender || "N/A"}</span>
-                              <span className="font-medium text-gray-700 block text-[10px]">{item.aadharNo || "N/A"}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="border-t border-gray-300 bg-white px-2 py-2 flex justify-center sticky bottom-0">
-                    {renderPaginationNav()}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "history" && (
-              <div className="flex-1 flex flex-col">
-                 {/* Desktop View (Table + Footer combined) */}
-                <div className="hidden md:flex flex-col border border-gray-200 rounded-lg bg-white overflow-hidden">
-                  <div className="max-h-[calc(100vh-280px)] min-h-[500px] overflow-y-auto scrollbar-hide">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Emp ID</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Candidate Name</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Father Name</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Joining Date</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Leaving Date</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Position</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Department</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Firm Name</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Work Location</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {paginatedItems.length === 0 ? (
-                          <tr>
-                            <td colSpan="9" className="px-4 py-24 text-center">
-                              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">No history recorded.</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedItems.map((item, index) => (
-                            <tr key={index} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 font-medium">{item.employeeId}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900 font-bold">{item.name}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.fatherName}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.dateOfJoining}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-rose-600 font-bold">{item.dateOfLeaving}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.designation}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.department}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.firmName}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.workingLocation}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Desktop Pagination Footer */}
-                  <div className="px-4 py-3 bg-white border-t border-gray-200 flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-6 flex-wrap">
-                      <p className="text-[13px] text-gray-600 font-medium tracking-wide">
-                        Showing <span className="font-bold text-gray-900">{currentItems.length > 0 ? indexOfFirstItem + 1 : 0}</span> to <span className="font-bold text-gray-900">{Math.min(indexOfLastItem, currentItems.length)}</span> of <span className="font-bold text-gray-900">{currentItems.length}</span> records
-                      </p>
-                      <div className="flex items-center gap-2 h-5">
-                        <label className="text-[13px] text-gray-500 font-medium whitespace-nowrap">Rows per page:</label>
-                        <select
-                          value={itemsPerPage}
-                          onChange={(e) => {
-                            setItemsPerPage(Number(e.target.value));
-                            setCurrentPage(1);
-                          }}
-                          className="text-xs bg-transparent font-medium text-gray-700 outline-none cursor-pointer"
-                        >
-                          {[15, 30, 50, 100].map((val) => (
-                            <option key={val} value={val}>{val}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex items-center w-auto justify-end">
-                      {renderPaginationNav()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mobile History View */}
-                <div className="md:hidden flex flex-col h-[calc(105vh-240px)]">
-                  <div className="flex-1 p-2 space-y-3 overflow-y-auto scrollbar-hide">
-                    {paginatedItems.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-24">
-                        <p className="text-gray-500 text-lg">No history found.</p>
-                      </div>
-                    ) : (
-                      paginatedItems.map((item, index) => (
-                        <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-2.5 space-y-2">
-                          <div className="flex justify-between items-center bg-gray-50 -mx-2.5 -mt-2.5 p-2 px-3 rounded-t-lg border-b border-gray-100 mb-1">
-                            <span className="font-bold text-indigo-600 text-xs tracking-tight">#{item.employeeId}</span>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-100 text-red-700">
-                               Exit Processed
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-start pt-1">
-                            <div className="text-sm font-bold text-gray-900 leading-tight">Reason:</div>
-                            <div className="text-[11px] text-gray-600 font-medium text-right max-w-[60%]">"{item.reasonOfLeaving || '-'}"</div>
-                          </div>
-
-                          <div className="flex justify-between items-start pt-1">
-                             <div className="text-xs text-gray-500">Name:</div>
-                             <div className="text-[11px] text-gray-800 font-bold">{item.name}</div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400 border-t border-gray-50 pt-2">
-                             <div>
-                                <span className="block uppercase">Joined</span>
-                                <span className="font-medium text-gray-600">{item.dateOfJoining}</span>
-                             </div>
-                             <div className="flex flex-col items-start gap-1 text-[10px] font-black">
-                                <span className="block uppercase">Left</span>
-                                <span className="text-rose-600 font-medium">{item.dateOfLeaving}</span>
-                             </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="border-t border-gray-300 bg-white px-2 py-2 flex justify-center sticky bottom-0">
-                    {renderPaginationNav()}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Exit Modal Refactored (Compact & Premium) */}
+      {/* Exit Modal */}
       {showModal && selectedItem && (
         <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4 backdrop-blur-sm bg-black/20 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-8 overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
@@ -753,18 +299,15 @@ const Leaving = () => {
                 <AlertCircle size={20} />
                 <h3 className="text-base font-black text-gray-800 tracking-tight">Process Employee Exit</h3>
               </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
             </div>
             
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 shadow-sm">
-                  <User size={20} />
+                <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 shadow-sm text-sm font-bold">
+                  {selectedItem.employeeNo ? String(selectedItem.employeeNo).substring(0, 2) : "ID"}
                 </div>
                 <div>
                   <h4 className="text-sm font-black text-gray-800 leading-none">{selectedItem.candidateName || selectedItem.name}</h4>
@@ -793,7 +336,7 @@ const Leaving = () => {
                     <AlertCircle size={13} className="absolute left-3 top-3 text-gray-400" />
                     <textarea 
                       required 
-                      rows={2}
+                      rows={3}
                       className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-4 focus:ring-rose-50 focus:border-rose-500 outline-none transition-all resize-none placeholder:text-gray-300 placeholder:font-medium"
                       placeholder="e.g. Resigned for better opportunity..."
                       value={formData.reasonOfLeaving}
@@ -801,34 +344,24 @@ const Leaving = () => {
                     />
                   </div>
                 </div>
-
-                <div className="p-2.5 bg-rose-50/50 rounded-xl border border-rose-100 flex items-start gap-2.5">
-                  <AlertCircle size={14} className="text-rose-600 shrink-0 mt-0.5" />
-                  <p className="text-[9px] font-bold text-rose-700 leading-normal italic">
-                    Note: Processing this exit will archive all records. Ensure all assets have been recovered.
-                  </p>
-                </div>
               </div>
 
-              <div className="flex gap-2 pt-1">
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)} 
-                  className="flex-1 py-2 bg-white border border-gray-300 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors"
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
+                  className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 flex items-center justify-center gap-2"
                   disabled={submitting}
-                  className="flex-1 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 shadow-lg shadow-rose-100 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
-                  {submitting ? (
-                    <Clock size={12} className="animate-spin" />
-                  ) : (
-                    <LogOut size={12} />
-                  )}
-                  {submitting ? 'Archiving...' : 'Confirm Exit'}
+                  {submitting ? "Processing..." : "Complete Exit"}
+                  {!submitting && <ArrowRight size={14} />}
                 </button>
               </div>
             </form>

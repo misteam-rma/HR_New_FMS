@@ -204,7 +204,7 @@ const LeaveApproval = () => {
     return `${month}/${day}/${year}`;
   };
 
-  const handleLeaveAction = async (action) => {
+  const handleLeaveAction = (action) => {
     if (!selectedRow) {
       toast.error("Please select a leave request");
       return;
@@ -213,233 +213,50 @@ const LeaveApproval = () => {
     setActionInProgress(action);
     setLoading(true);
 
-    try {
-      const fullDataResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=Leave Management&action=fetch"
-      );
-
-      if (!fullDataResponse.ok) {
-        throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
+    // Simulate delay
+    setTimeout(() => {
+      const status = action === "accept" ? "approved" : "rejected";
+      
+      // Update local state
+      if (status === "approved") {
+        setApprovedLeaves(prev => [...prev, { ...selectedRow, hodApproval: "approved" }]);
+      } else {
+        setRejectedLeaves(prev => [...prev, { ...selectedRow, hodApproval: "rejected" }]);
       }
-
-      const fullDataResult = await fullDataResponse.json();
-      const allData = fullDataResult.data || fullDataResult;
-
-      // Find the row index by matching Column B (serial number) and Column C (employee ID)
-      const rowIndex = allData.findIndex(
-        (row, idx) =>
-          idx > 0 && // Skip header row
-          row[1]?.toString().trim() ===
-          selectedRow.serialNo?.toString().trim() &&
-          row[2]?.toString().trim() ===
-          selectedRow.employeeId?.toString().trim()
-      );
-
-      if (rowIndex === -1) {
-        throw new Error(
-          `Leave request not found for employee ${selectedRow.employeeId}`
-        );
-      }
-
-      const today = new Date();
-      const day = String(today.getDate()).padStart(2, "0");
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      const year = today.getFullYear();
-      const formattedDate = `${day}/${month}/${year}`;
-
-      // Prepare only the columns we want to update
-      const updateData = {
-        sheetName: "Leave Management",
-        action: "updateCell", // Change to updateCell action
-        rowIndex: rowIndex + 1, // Add 1 because Google Sheets rows are 1-indexed
-      };
-
-      // Update Column A (timestamp)
-      const timestampPayload = {
-        ...updateData,
-        columnIndex: 1, // Column A
-        value: formattedDate
-      };
-
-      const timestampResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams(timestampPayload).toString(),
-        }
-      );
-
-      const timestampResult = await timestampResponse.json();
-      if (!timestampResult.success) {
-        throw new Error("Failed to update timestamp");
-      }
-
-      // Update Column E (start date) if changed
-      if (editableDates.from && editableDates.from !== selectedRow.startDate) {
-        const startDatePayload = {
-          ...updateData,
-          columnIndex: 5, // Column E
-          value: formatDOB(editableDates.from)
-        };
-
-        const startDateResponse = await fetch(
-          "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams(startDatePayload).toString(),
-          }
-        );
-
-        const startDateResult = await startDateResponse.json();
-        if (!startDateResult.success) {
-          throw new Error("Failed to update start date");
-        }
-      }
-
-      // Update Column F (end date) if changed
-      if (editableDates.to && editableDates.to !== selectedRow.endDate) {
-        const endDatePayload = {
-          ...updateData,
-          columnIndex: 6, // Column F
-          value: formatDOB(editableDates.to)
-        };
-
-        const endDateResponse = await fetch(
-          "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams(endDatePayload).toString(),
-          }
-        );
-
-        const endDateResult = await endDateResponse.json();
-        if (!endDateResult.success) {
-          throw new Error("Failed to update end date");
-        }
-      }
-
-      // Update Column M (HOD approval status)
-      const approvalPayload = {
-        ...updateData,
-        columnIndex: 13, // Column M
-        value: action === "accept" ? "approved" : "rejected"
-      };
-
-      const approvalResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams(approvalPayload).toString(),
-        }
-      );
-
-      const approvalResult = await approvalResponse.json();
-      if (!approvalResult.success) {
-        throw new Error("Failed to update approval status");
-      }
+      
+      setPendingLeaves(prev => prev.filter(leave => leave.serialNo !== selectedRow.serialNo));
 
       toast.success(
-        `Leave ${action === "accept" ? "approved" : "rejected"} for ${selectedRow.employeeName || "employee"
-        }`
+        `Leave ${status} for ${selectedRow.employeeName || "employee"}`
       );
-      fetchLeaveData();
+      
       setSelectedRow(null);
       setEditableDates({ from: "", to: "" });
-
-    } catch (error) {
-      console.error("Update error:", error);
-      toast.error(`Failed to ${action} leave: ${error.message}`);
-    } finally {
       setLoading(false);
       setActionInProgress(null);
-    }
+    }, 1000);
   };
 
-  const fetchLeaveData = async () => {
+  const fetchLeaveData = () => {
     setLoading(true);
     setTableLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=Leave Management&action=fetch"
-      );
+    // Simulate delay
+    setTimeout(() => {
+      const mockLeaves = [
+        { timestamp: "01/04/2024", serialNo: "LV-1001", employeeId: "EMP-101", employeeName: "Rahul Sharma", startDate: "10/04/2024", endDate: "12/04/2024", remark: "Family function", days: 3, status: "Active", leaveType: "Casual Leave", hodName: "Vikram Seth", department: "Engineering", substitute: "Priya Singh", hodApproval: "pending" },
+        { timestamp: "05/04/2024", serialNo: "LV-1002", employeeId: "EMP-102", employeeName: "Priya Singh", startDate: "15/04/2024", endDate: "15/04/2024", remark: "Doctor appointment", days: 1, status: "Active", leaveType: "Sick Leave", hodName: "Vikram Seth", department: "Human Resources", substitute: "None", hodApproval: "approved" },
+        { timestamp: "02/04/2024", serialNo: "LV-1003", employeeId: "EMP-103", employeeName: "Amit Verma", startDate: "05/04/2024", endDate: "05/04/2024", remark: "Personal work", days: 1, status: "Active", leaveType: "Restricted Holiday", hodName: "Vikram Seth", department: "Operations", substitute: "None", hodApproval: "rejected" }
+      ];
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to fetch leave data");
-      }
-
-      const rawData = result.data || result;
-
-      if (!Array.isArray(rawData)) {
-        throw new Error("Expected array data not received");
-      }
-
-      const dataRows = rawData.length > 1 ? rawData.slice(1) : [];
-
-      const processedData = dataRows.map((row) => ({
-        timestamp: row[0] || "",
-        serialNo: row[1] || "",
-        employeeId: row[2] || "",
-        employeeName: row[3] || "",
-        startDate: row[4] || "",
-        endDate: row[5] || "",
-        remark: row[6] || "",
-        days: row[13],
-        status: row[7],
-        leaveType: row[8],
-        hodName: row[9] || "",
-        department: row[10] || "",
-        substitute: row[11] || "",
-        hodApproval: row[12] || "", // Column M - HOD Approval Status
-      }));
-
-      // Filter leaves where HOD approval is pending
-      setPendingLeaves(
-        processedData.filter(
-          (leave) => leave.hodApproval?.toString().toLowerCase() === "pending"
-        )
-      );
-
-      // Filter leaves where HOD approval is approved
-      setApprovedLeaves(
-        processedData.filter(
-          (leave) => leave.hodApproval?.toString().toLowerCase() === "approved"
-        )
-      );
-
-      // Filter leaves where HOD approval is rejected
-      setRejectedLeaves(
-        processedData.filter(
-          (leave) => leave.hodApproval?.toString().toLowerCase() === "rejected"
-        )
-      );
-    } catch (error) {
-      console.error("Error fetching leave data:", error);
-      setError(error.message);
-      toast.error(`Failed to load leave data: ${error.message}`);
-    } finally {
+      setPendingLeaves(mockLeaves.filter(l => l.hodApproval === "pending"));
+      setApprovedLeaves(mockLeaves.filter(l => l.hodApproval === "approved"));
+      setRejectedLeaves(mockLeaves.filter(l => l.hodApproval === "rejected"));
+      
       setLoading(false);
       setTableLoading(false);
-    }
+    }, 600);
   };
 
   const formatDate = (dateString) => {

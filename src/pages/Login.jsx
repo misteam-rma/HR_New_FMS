@@ -6,9 +6,7 @@ import useAuthStore from '../store/authStore';
 import LoadingSpinner from '../components/LoadingSpinner';
 import logo from '../Assets/RMAALL.png';
 import officeBg from '../Assets/office-bg.png';
-
-const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=USER&action=fetch';
-const LEAVING_API_URL = 'https://script.google.com/macros/s/AKfycbx2Gx6GwLbx4vROXNK6PnB9J6pU61x5cfjjaqsEYH5nWkZwQGR8p-0geF14UK7QyG3qPg/exec?sheet=LEAVING&action=fetch';
+import { MOCK_USERS } from '../data/mockData';
 
 localStorage.removeItem('hasSeenLanguageHint');
 
@@ -25,57 +23,17 @@ const Login = () => {
     setSubmitting(true);
 
     try {
-      const [userRes, leavingRes] = await Promise.all([
-        fetch(SHEET_API_URL),
-        fetch(LEAVING_API_URL)
-      ]);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      const userJson = await userRes.json();
-      const leavingJson = await leavingRes.json();
-
-      if (!userJson.success || !leavingJson.success) {
-        toast.error('Error fetching data');
-        setSubmitting(false);
-        return;
-      }
-
-      const userRows = userJson.data;
-      const userHeaders = userRows[0];
-      const users = userRows.slice(1).map(row => {
-        let obj = {};
-        userHeaders.forEach((h, i) => obj[h] = row[i]);
-        return obj;
-      });
-
-      const leavingRows = leavingJson.data;
-      const leavingHeaders = leavingRows[5];
-      const leavingData = leavingRows.slice(6).map((row) => {
-        let obj = {};
-        leavingHeaders.forEach((h, i) => (obj[h] = row[i]));
-        return obj;
-      });
-
-      const matchedUser = users.find(
-        (u) => u.Username === username && u.Password === password
+      const matchedUser = MOCK_USERS.find(
+        (u) => 
+          (u.Username.toLowerCase() === username.toLowerCase() || u.Code?.toLowerCase() === username.toLowerCase()) && 
+          u.Password === password
       );
 
       if (!matchedUser) {
         toast.error('Invalid credentials');
-        setSubmitting(false);
-        return;
-      }
-
-      const userName = matchedUser[userHeaders[2]];
-      const isUserLeaving = leavingData.some(record => {
-        const leavingName = record[leavingHeaders[2]];
-        const leavingStatus = record[leavingHeaders[13]];
-        return leavingName && userName &&
-          leavingName.toString().toLowerCase() === userName.toString().toLowerCase() &&
-          leavingStatus !== null && leavingStatus !== undefined && leavingStatus !== '';
-      });
-
-      if (isUserLeaving) {
-        toast.error('Employee access has been deactivated');
         setSubmitting(false);
         return;
       }

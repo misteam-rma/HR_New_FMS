@@ -34,6 +34,9 @@ import LeaveApproval from './pages/LeaveApproval';
 // import GatePass from './pages/GatePass';
 import AttendanceForm from './pages/AttendanceForm';
 import AdminAttendance from './pages/AdminAttendance';
+import Noc108 from './pages/Noc108';
+import Reimbursement from './pages/Reimbursement';
+import Feedback from './pages/Feedback';
 
 function App() {
   return (
@@ -48,7 +51,7 @@ function App() {
               <Layout />
             </ProtectedRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route index element={JSON.parse(localStorage.getItem('user'))?.Admin === 'Yes' ? <Dashboard /> : <Navigate to="/my-profile" replace />} />
             <Route path="indent" element={<Indent />} />
             {/* <Route path="social-site" element={<SocialSite />} /> */}
             <Route path="find-enquiry" element={<FindEnquiry />} />
@@ -80,6 +83,9 @@ function App() {
               {/* <Route path="jobPoster" element={<JobPoster/>} /> */}
               <Route path='leaveApproval' element={<LeaveApproval/>} />
               {/* <Route path='hrPolicy' element={<HrPolicy/>} /> */}
+              <Route path="108-noc" element={<Noc108 />} />
+              <Route path="reimbursement" element={<Reimbursement />} />
+              <Route path="feedback" element={<Feedback />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

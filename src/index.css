@@ -7,14 +7,17 @@
   --accent-blue: #2563eb;
   --bg-slate: #f8fafc;
   --border-gray: #e2e8f0;
+  --indigo-soft: #818cf8;
+  --glass-white: rgba(255, 255, 255, 0.7);
 }
 
 body {
-  background-color: var(--bg-slate);
+  background: radial-gradient(circle at top left, #f8fafc 0%, #f1f5f9 100%);
   color: #1e293b;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 0.85rem;
   min-height: 100vh;
+  letter-spacing: -0.01em;
 }
 
 /* Page Content Container */
@@ -80,22 +83,47 @@ body {
 
 /* Global Table Compaction */
 table th, table td {
-  padding: 0.5rem 1rem !important; /* Overriding common utility classes like px-6 py-4 */
+  padding: 0.75rem 1.25rem !important;
 }
 
-/* Redefining some tailwind utility defaults if needed directly */
-.space-y-6 > * + * {
-  margin-top: 1rem !important;
+/* Premium Component Shadows */
+.shadow-premium {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
 }
 
-.space-y-4 > * + * {
-  margin-top: 0.75rem !important;
+.shadow-glow-indigo {
+  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.15);
 }
 
-.gap-4 {
-  gap: 0.75rem !important;
+/* Custom Scrollbar for modern look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.p-4 {
-  padding: 0.75rem !important;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* Zoom animations for modals/cards */
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.transition-active {
+  transition: transform 0.1s ease-out;
 }
