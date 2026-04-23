@@ -19,7 +19,6 @@ import {
   UserCheck,
   UserX,
   Clock,
-  UserPlus,
   TrendingUp,
   Briefcase,
   Layers,
@@ -55,17 +54,6 @@ const Dashboard = () => {
     { name: 'Resigned', value: leftEmployee || 0, color: '#cbd5e1' }
   ], [activeEmployee, leftEmployee]);
 
-  // Parse DD/MM/YYYY format date
-  const parseSheetDate = (dateStr) => {
-    if (!dateStr) return null;
-    const parts = dateStr.split('/');
-    if (parts.length !== 3) return null;
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const year = parseInt(parts[2], 10);
-    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-    return new Date(year, month, day);
-  };
 
   useEffect(() => {
     // Initialize with Mock Data for Consistency

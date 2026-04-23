@@ -1,6 +1,26 @@
 {
   "rewrites": [
     {
+      "source": "/api/login",
+      "destination": "https://script.google.com/macros/s/AKfycbV5MYK7dLernmfGLiB4zFvY8DL5JgQ1vS-DEzikN2NeVVLl_3aqsCgflXhDhtlcrZM/exec"
+    },
+    {
+      "source": "/api/leaves",
+      "destination": "https://script.google.com/macros/s/AKfycbw88oeMOTSLnXetLBSKDAIX6byntFe3oUQH37b1ZZ-eFoLk9QvKRmcxy99WVpIwp6OJjQ/exec?e=list"
+    },
+    {
+      "source": "/api/noc",
+      "destination": "https://script.google.com/macros/s/AKfycbztJpLI48C2XD8MAuc-a1df548NTOJ64QlkdG_Q3Obkc55K5W8lsNzfddL2gbFQ_Dju/exec?e=list"
+    },
+    {
+      "source": "/api/feedback",
+      "destination": "https://script.google.com/macros/s/AKfycby-TcP-K0Zv1ntrZiuPNdQIhOUVYX3ppkEAKQ01OWaOyMdxR5jkTQIFhis8r3q7f1A4ZQ/exec"
+    },
+    {
+      "source": "/api/articles",
+      "destination": "https://script.google.com/macros/s/AKfycby8-yAat6TEyTJOGdW8NS3UXpPGuVe_Sof5hPFTi8TttUwhhuDEckUTgMslI8_tDXtWkg/exec?e=list"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

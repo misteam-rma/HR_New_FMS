@@ -63,7 +63,6 @@ export const MOCK_EMPLOYEES = [
 const now = new Date();
 const currYear = now.getFullYear();
 const currMonthStr = String(now.getMonth() + 1).padStart(2, '0');
-const currMonthInt = now.getMonth();
 
 export const MOCK_ATTENDANCE = Array.from({ length: 25 }, (_, i) => {
   const isLate = i % 5 === 0;

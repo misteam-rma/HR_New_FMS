@@ -22,7 +22,16 @@ export default {
         'lg': ['1rem', { lineHeight: '1.5rem' }],
         'xl': ['1.125rem', { lineHeight: '1.75rem' }],
         '2xl': ['1.25rem', { lineHeight: '2rem' }],
-      }
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 1.8s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

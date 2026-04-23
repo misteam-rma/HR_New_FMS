@@ -1,42 +1,27 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Indent from './pages/Indent';
-// import SocialSite from './pages/SocialSite';
-import FindEnquiry from './pages/FindEnquiry';
-import CallTracker from './pages/CallTracker';
-import AfterJoiningWork from './pages/AfterJoiningWork';
-import Leaving from './pages/Leaving';
-import AfterLeavingWork from './pages/AfterLeavingWork';
-import Employee from './pages/Employee';
-import MyProfile from './pages/MyProfile';
-import MyAttendance from './pages/MyAttendance';
-import LeaveRequest from './pages/LeaveRequest';
-// import MySalary from './pages/MySalary';
-import CompanyCalendar from './pages/CompanyCalendar';
-import ProtectedRoute from './components/ProtectedRoute';
-import Attendance from './pages/Attendance';
-import AttendanceDaily from './pages/AttendanceDaily';
-import LeaveManagement from './pages/LeaveManagement';
-// import Attendancedaily from './pages/Attendancedaily';
-// import Report from './pages/Report';
-import Payroll from './pages/Payroll';
-// import MisReport from './pages/MisReport';
-import Joining from './pages/Joining';
-import License from './pages/License';
-// import JobPoster from './pages/JobPoster';
-import LeaveApproval from './pages/LeaveApproval';
-// import { BalanceScoreCard } from './pages/BalanceScoreCard/BalanceScoreCard';
-// import { UserBalanceScoreCard } from './pages/BalanceScoreCard/UserBalanceScoreCard';
-// import GatePass from './pages/GatePass';
-import AttendanceForm from './pages/AttendanceForm';
-import AdminAttendance from './pages/AdminAttendance';
-import Noc108 from './pages/Noc108';
-import Reimbursement from './pages/Reimbursement';
-import Feedback from './pages/Feedback';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Employee from "./pages/Employee";
+import MyAttendance from "./pages/MyAttendance";
+import CompanyCalendar from "./pages/CompanyCalendar";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Attendance from "./pages/Attendance";
+import AttendanceDaily from "./pages/AttendanceDaily";
+import LeaveManagement from "./pages/LeaveManagement";
+import License from "./pages/License";
+import Noc108 from "./pages/Noc108";
+import Reimbursement from "./pages/Reimbursement";
+import Feedback from "./pages/Feedback";
+import Artical from "./pages/Artical";
+import ArticalAttendence from "./pages/ArticalAttendence";
 
 function App() {
   return (
@@ -45,47 +30,107 @@ function App() {
         <Toaster position="top-right" />
         <Routes>
           <Route path="/login" element={<Login />} />
-          
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
-            <Route index element={JSON.parse(localStorage.getItem('user'))?.Admin === 'Yes' ? <Dashboard /> : <Navigate to="/my-profile" replace />} />
-            <Route path="indent" element={<Indent />} />
-            {/* <Route path="social-site" element={<SocialSite />} /> */}
-            <Route path="find-enquiry" element={<FindEnquiry />} />
-            <Route path="call-tracker" element={<CallTracker />} />
-            <Route path='joining' element={<Joining />} />
-            <Route path="after-joining-work" element={<AfterJoiningWork />} />
-            <Route path="leaving" element={<Leaving />} />
-            <Route path="after-leaving-work" element={<AfterLeavingWork />} />
-            <Route path="employee" element={<Employee />} />
-            <Route path="my-profile" element={<MyProfile />} />
+
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route
+              path="employee"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Employee />
+                </ProtectedRoute>
+              }
+            />
             <Route path="my-attendance" element={<MyAttendance />} />
-            <Route path="attendance-form" element={<AttendanceForm />} />
-            <Route path="attendance/daily" element={<AttendanceDaily />} />
-            <Route path="attendance/monthly" element={<Attendance />} />
-            <Route path="leave-request" element={<LeaveRequest />} />
-            {/* <Route path="my-salary" element={<MySalary />} /> */}
+            <Route
+              path="attendance/daily"
+              element={
+                <ProtectedRoute>
+                  <AttendanceDaily />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="attendance/monthly"
+              element={
+                <ProtectedRoute>
+                  <Attendance />
+                </ProtectedRoute>
+              }
+            />
             <Route path="company-calendar" element={<CompanyCalendar />} />
-             <Route path="leave-management" element={<LeaveManagement />} />
-             {/* <Route path="gate-pass" element={<GatePass />} /> */}
-             {/* <Route path="gate-pass-request" element={<GatePassRequest />} /> */}
-              <Route path="admin-attendance" element={<AdminAttendance />} />
-              {/* <Route path="attendancedaily" element={<Attendancedaily />} /> */}
-              {/* <Route path="report" element={<Report />} /> */}
-              {/* <Route path="payroll" element={<Payroll />} /> */}
-              {/* <Route path="misreport" element={<MisReport />} />
-              <Route path='balanceScoreCard' element={<BalanceScoreCard />} />
-              <Route path='userBalanceScoreCard' element={<UserBalanceScoreCard />} /> */}
-              <Route path="license" element={<License/>} />
-              {/* <Route path="jobPoster" element={<JobPoster/>} /> */}
-              <Route path='leaveApproval' element={<LeaveApproval/>} />
-              {/* <Route path='hrPolicy' element={<HrPolicy/>} /> */}
-              <Route path="108-noc" element={<Noc108 />} />
-              <Route path="reimbursement" element={<Reimbursement />} />
-              <Route path="feedback" element={<Feedback />} />
+            <Route
+              path="leave-management"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <LeaveManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="license"
+              element={
+                <ProtectedRoute>
+                  <License />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="108-noc"
+              element={
+                <ProtectedRoute>
+                  <Noc108 />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+            path="reimbursement"
+            element={
+              <ProtectedRoute>
+                <Reimbursement />
+              </ProtectedRoute>
+            }
+            />
+            <Route
+              path="feedback"
+              element={
+                <ProtectedRoute>
+                  <Feedback />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="artical"
+              element={
+                <ProtectedRoute>
+                  <Artical />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="article-attendance"
+              element={
+                <ProtectedRoute>
+                  <ArticalAttendence />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="leave-request"
+              element={
+                <ProtectedRoute>
+                  <LeaveManagement />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

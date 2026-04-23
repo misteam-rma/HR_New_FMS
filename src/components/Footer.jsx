@@ -1,8 +1,8 @@
 import React from 'react';
 
-const Footer = () => {
+const Footer = ({ isCollapsed }) => {
     return (
-        <footer className="fixed bottom-0 left-0 lg:left-56 right-0 py-2.5 border-t border-slate-200 bg-white/95 backdrop-blur-sm shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40">
+        <footer className={`fixed bottom-0 left-0 ${isCollapsed ? 'lg:left-20' : 'lg:left-64'} right-0 py-2.5 border-t border-slate-200 bg-white/95 backdrop-blur-sm shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40 transition-all duration-300 ease-in-out`}>
             <div className="max-w-7xl mx-auto px-4 text-center">
                 <p className="text-xs sm:text-sm font-medium text-slate-500">
                     Powered By <a 

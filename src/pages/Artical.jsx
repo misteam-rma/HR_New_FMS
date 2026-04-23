@@ -65,26 +65,9 @@ const CardSkeleton = () => (
 );
 
 /* ------------------------------------------------------------------ */
-/*  Helper: Calculate leave days (inclusive) from dd/MM/yyyy strings  */
-/* ------------------------------------------------------------------ */
-const calculateLeaveDays = (startStr, endStr) => {
-  if (!startStr || !endStr) return 0;
-
-  const startParts = startStr.split('/');
-  const endParts = endStr.split('/');
-  if (startParts.length !== 3 || endParts.length !== 3) return 0;
-
-  const startDate = new Date(+startParts[2], +startParts[1] - 1, +startParts[0]);
-  const endDate = new Date(+endParts[2], +endParts[1] - 1, +endParts[0]);
-
-  if (isNaN(startDate) || isNaN(endDate)) return 0;
-  return Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-};
-
-/* ------------------------------------------------------------------ */
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
-const LeaveManagement = () => {
+const Artical = () => {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -97,14 +80,14 @@ const LeaveManagement = () => {
   const abortControllerRef = useRef(null);
 
   // ------------------------------------------------------------------
-  //  Fetch data via Proxy (Fast & Clean)
+  //  Fetch data from Apps Script using Proxy
   // ------------------------------------------------------------------
   const fetchData = useCallback(async (signal, isRefresh = false) => {
     // 1. Check Cache first (unless refreshing)
     if (!isRefresh) {
-      const cachedData = getCache("leave_data");
+      const cachedData = getCache("article_data");
       if (cachedData) {
-        console.log("🚀 Serving Leave data from cache");
+        console.log("🚀 Serving Article data from cache");
         setItems(cachedData);
         setIsLoading(false);
         return;
@@ -115,8 +98,8 @@ const LeaveManagement = () => {
     else setIsLoading(true);
 
     try {
-      const url = "/api/leaves";
-      console.log("📡 Fetching leave data via proxy...");
+      const url = "/api/articles";
+      console.log("📡 Fetching Article data via proxy...");
 
       const response = await fetch(url, { signal });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -133,29 +116,54 @@ const LeaveManagement = () => {
         throw new Error("Data is not an array");
       }
 
-      const formattedData = rawData.map((item, index) => {
-        const startDate = item.startDate || "";
-        const endDate = item.endDate || "";
-        const leaveDays = calculateLeaveDays(startDate, endDate);
-        return {
-          id: item.code ? `leave-${item.code}-${index}` : `leave-${index}`,
+      let formattedData = [];
+      const firstItem = rawData[0];
+      const is2DArray = Array.isArray(firstItem);
+
+      if (is2DArray) {
+        // 2D array format – filter out empty rows
+        const dataRows = rawData.filter(row => {
+          const ts = String(row[0] || "").trim();
+          const name = String(row[1] || "").trim();
+          return ts !== "" || name !== "";
+        });
+
+        formattedData = dataRows.map((row, index) => ({
+          id: `art-${row[2] || index}-${index}`,
+          timestamp: row[0] || "-",
+          nameOfArticle: row[1] || "-",
+          croNumber: row[2] || "-",
+          contactNo: row[3] || "-",
+          address: row[4] || "-",
+          uploadPassport: row[5] || "-",
+          uploadResume: row[6] || "-",
+          email: row[7] || "-",
+          column1: row[8] || "-",
+        }));
+      } else {
+        // Object array format – skip first two rows (metadata and headers)
+        const dataRows = rawData.slice(0);
+        console.log(`🔍 Total rows: ${rawData.length}, after slicing: ${dataRows.length}`);
+
+        formattedData = dataRows.map((item, index) => ({
+          id: item.croNumber ? `art-${item.croNumber}-${index}` : `art-${index}`,
           timestamp: item.timestamp || "-",
-          name: item.name || "-",
-          code: item.code || "-",
-          role: item.role || "-",
-          reason: item.reason || "-",
-          startDate: startDate || "-",
-          endDate: endDate || "-",
-          leaveDays: leaveDays,
-          approvedBy: item.approvedBy || "-",
-        };
-      });
+          nameOfArticle: item.nameOfArticle || "-",
+          croNumber: item.croNumber || "-",
+          contactNo: item.contactNo || "-",
+          address: item.address || "-",
+          uploadPassport: item.uploadPassport || "-",
+          uploadResume: item.uploadResume || "-",
+          email: item.email || "-",
+          column1: item.column1 || "-",
+        }));
+      }
 
       console.log("✅ Formatted items:", formattedData.length);
       setItems(formattedData);
 
       // Update cache
-      setCache("leave_data", formattedData);
+      setCache("article_data", formattedData);
     } catch (error) {
       if (error.name !== "AbortError") {
         console.error("❌ Fetch error:", error);
@@ -163,7 +171,7 @@ const LeaveManagement = () => {
         setItems([]);
       }
     } finally {
-      if (!signal?.aborted) {
+      if (!signal.aborted) {
         if (isRefresh) setIsRefreshing(false);
         else setIsLoading(false);
       }
@@ -201,13 +209,15 @@ const LeaveManagement = () => {
         let aVal = a[sortConfig.key];
         let bVal = b[sortConfig.key];
 
-        const aNum = parseFloat(aVal);
-        const bNum = parseFloat(bVal);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
+        // Numeric detection
+        const aNum = parseFloat(String(aVal).replace(/[^0-9.-]/g, ""));
+        const bNum = parseFloat(String(bVal).replace(/[^0-9.-]/g, ""));
+        if (!isNaN(aNum) && !isNaN(bNum) && String(aVal).trim() && String(bVal).trim()) {
           return sortConfig.direction === "asc" ? aNum - bNum : bNum - aNum;
         }
 
-        if (sortConfig.key === "timestamp" || sortConfig.key === "startDate" || sortConfig.key === "endDate") {
+        // Date detection (for timestamp)
+        if (sortConfig.key === "timestamp") {
           const aDate = new Date(aVal);
           const bDate = new Date(bVal);
           if (!isNaN(aDate) && !isNaN(bDate)) {
@@ -217,6 +227,7 @@ const LeaveManagement = () => {
           }
         }
 
+        // String comparison
         aVal = String(aVal || "").toLowerCase();
         bVal = String(bVal || "").toLowerCase();
         if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
@@ -228,35 +239,43 @@ const LeaveManagement = () => {
   );
 
   const user = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    const userString = localStorage.getItem("user");
+    return userString ? JSON.parse(userString) : null;
   }, []);
 
   const filteredAndSortedItems = useMemo(() => {
-    // Admins see all records; others see only their own by code.
-    const userRole = (user?.role || "").toLowerCase();
-    const isAdmin = userRole === "admin" || user?.Admin === "Yes";
-    const userCode = String(user?.code || "").trim().toLowerCase();
+    if (!user) return [];
+    
+    const userRole = String(user.role || "").trim().toLowerCase();
+    const userCode = String(user.code || "").trim().toLowerCase();
+
+    const isAdmin = 
+      userRole === "admin" || 
+      user.isAdmin === true ||
+      user.Admin === "Yes" || 
+      String(user.Admin).toLowerCase() === "yes" ||
+      userCode === "admin";
+
     const baseItems = isAdmin
       ? items
       : userCode
-        ? items.filter(
-            (item) => String(item.code || "").trim().toLowerCase() === userCode
-          )
+        ? items.filter((item) => {
+            const cro = String(item.croNumber || "").trim().toLowerCase();
+            const contact = String(item.contactNo || "").trim().toLowerCase();
+            return cro === userCode || contact === userCode;
+          })
         : [];
 
     const term = searchTerm.toLowerCase().trim();
     const filtered = baseItems.filter((item) => {
       if (!term) return true;
       return (
-        String(item.name || "").toLowerCase().includes(term) ||
-        String(item.code || "").toLowerCase().includes(term)
+        String(item.nameOfArticle || "").toLowerCase().includes(term) ||
+        String(item.croNumber || "").toLowerCase().includes(term) ||
+        String(item.email || "").toLowerCase().includes(term)
       );
     });
+
     return getSortedItems(filtered);
   }, [items, user, searchTerm, getSortedItems]);
 
@@ -299,8 +318,8 @@ const LeaveManagement = () => {
       {[...Array(Math.max(1, Math.min(5, totalPages || 1)))].map((_, i) => (
         <button key={i} onClick={() => paginate(i + 1)}
           className={`relative inline-flex items-center px-3 py-1.5 border text-[11px] font-bold transition-colors ${currentPage === i + 1
-            ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm"
-            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+              ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm"
+              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
             }`}>
           {i + 1}
         </button>
@@ -312,18 +331,25 @@ const LeaveManagement = () => {
     </nav>
   );
 
+  // Helper to truncate long file URLs
+  const truncateUrl = (url) => {
+    if (!url || url === "-") return "-";
+    if (url.length > 30) return url.substring(0, 27) + "...";
+    return url;
+  };
+
   return (
     <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 py-1 space-y-4 pb-20 md:pb-8 font-outfit">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-gray-800 tracking-tight shrink-0">Leave Applications</h2>
+        <h2 className="text-xl font-bold text-gray-800 tracking-tight shrink-0">Article Form Submissions</h2>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-end gap-3 w-full md:w-auto flex-1">
           <div className="relative flex-1 sm:w-64 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
             <input
               type="text"
-              placeholder="Search by Name, Code or Role..."
+              placeholder="Search by Name, CRO or Email..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full text-[13px] shadow-sm bg-white font-medium"
@@ -341,14 +367,13 @@ const LeaveManagement = () => {
           </button>
 
           <a
-            href={import.meta.env.VITE_LEAVE_MANAGEMENT_GOOGLEFORM_URL}
+            href={import.meta.env.VITE_ARTICLE_GOOGLEFORM_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-all duration-200 active:scale-95 shrink-0"
-            aria-label="Fill Leave Form"
+            className="flex items-center justify-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-all duration-200 active:scale-95 whitespace-nowrap"
           >
             <ExternalLink size={14} />
-            <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Fill Leave Form</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">Fill Article Form</span>
           </a>
         </div>
       </div>
@@ -364,14 +389,14 @@ const LeaveManagement = () => {
                 <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                   <tr>
                     <SortHeader label="Timestamp" sortKey="timestamp" align="center" />
-                    <SortHeader label="Name" sortKey="name" align="left" />
-                    <SortHeader label="Code" sortKey="code" align="center" />
-                    <SortHeader label="Role" sortKey="role" align="center" />
-                    <SortHeader label="Reason" sortKey="reason" align="left" />
-                    <SortHeader label="Start Date" sortKey="startDate" align="center" />
-                    <SortHeader label="End Date" sortKey="endDate" align="center" />
-                    <SortHeader label="Days" sortKey="leaveDays" align="center" />
-                    <SortHeader label="Approved By" sortKey="approvedBy" align="center" />
+                    <SortHeader label="Name of Article" sortKey="nameOfArticle" align="left" />
+                    <SortHeader label="CRO Number" sortKey="croNumber" align="center" />
+                    <SortHeader label="Contact No." sortKey="contactNo" align="center" />
+                    <SortHeader label="Address" sortKey="address" align="left" />
+                    <SortHeader label="Upload Passport" sortKey="uploadPassport" align="center" />
+                    <SortHeader label="Upload Resume" sortKey="uploadResume" align="center" />
+                    <SortHeader label="Email" sortKey="email" align="left" />
+                    <SortHeader label="Column 1" sortKey="column1" align="center" />
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
@@ -381,18 +406,30 @@ const LeaveManagement = () => {
                     currentItems.map((item) => (
                       <tr key={item.id} className="hover:bg-indigo-50/50 transition-colors group">
                         <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-500 font-medium">{item.timestamp || "-"}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-left text-sm text-gray-900 font-medium">{item.name || "-"}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-left text-sm text-gray-900 font-medium">{item.nameOfArticle || "-"}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-center">
                           <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200 uppercase tracking-wider">
-                            {item.code || "-"}
+                            {item.croNumber || "-"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-600 font-medium">{item.role || "-"}</td>
-                        <td className="px-4 py-4 text-left text-sm text-gray-600 max-w-xs truncate" title={item.reason}>{item.reason || "-"}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-600">{item.startDate || "-"}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-600">{item.endDate || "-"}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-indigo-600 font-semibold">{item.leaveDays}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-600">{item.approvedBy || "-"}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-600 font-medium">{item.contactNo || "-"}</td>
+                        <td className="px-4 py-4 text-left text-sm text-gray-600 max-w-xs truncate" title={item.address}>{item.address || "-"}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm">
+                          {item.uploadPassport && item.uploadPassport !== "-" ? (
+                            <a href={item.uploadPassport} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 font-medium underline decoration-indigo-200" title={item.uploadPassport}>
+                              View Passport
+                            </a>
+                          ) : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm">
+                          {item.uploadResume && item.uploadResume !== "-" ? (
+                            <a href={item.uploadResume} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 font-medium underline decoration-indigo-200" title={item.uploadResume}>
+                              View Resume
+                            </a>
+                          ) : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-left text-sm text-gray-600">{item.email || "-"}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-500">{item.column1 || "-"}</td>
                       </tr>
                     ))
                   )}
@@ -431,21 +468,23 @@ const LeaveManagement = () => {
             currentItems.map((item) => (
               <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-3 space-y-3 shadow-sm relative w-full">
                 <div className="flex justify-between items-center bg-gray-50/80 -mx-3 -mt-3 p-2.5 px-3 border-b border-gray-100">
-                  <span className="font-black text-indigo-600 text-[10px] tracking-tighter uppercase">#{item.code}</span>
+                  <span className="font-black text-indigo-600 text-[10px] tracking-tighter uppercase">CRO: {item.croNumber}</span>
                   <span className="text-[10px] text-gray-400">{item.timestamp}</span>
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-[13px] font-black text-gray-800 uppercase tracking-tight">{item.name}</h4>
-                  <p className="text-[10px] text-gray-500">{item.role}</p>
+                  <h4 className="text-[13px] font-black text-gray-800 uppercase tracking-tight">{item.nameOfArticle}</h4>
+                  <p className="text-[10px] text-gray-500">{item.email}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-50 text-[11px]">
-                  <div><span className="font-bold text-gray-400 block text-[9px] uppercase">Start</span> {item.startDate}</div>
-                  <div><span className="font-bold text-gray-400 block text-[9px] uppercase">End</span> {item.endDate}</div>
-                  <div><span className="font-bold text-gray-400 block text-[9px] uppercase">Days</span> <span className="text-indigo-700 font-bold">{item.leaveDays}</span></div>
-                  <div><span className="font-bold text-gray-400 block text-[9px] uppercase">Approved By</span> {item.approvedBy}</div>
+                  <div><span className="font-bold text-gray-400 block text-[9px] uppercase">Contact</span> {item.contactNo}</div>
+                  <div><span className="font-bold text-gray-400 block text-[9px] uppercase">Column 1</span> {item.column1}</div>
                   <div className="col-span-2">
-                    <span className="font-bold text-gray-400 block text-[9px] uppercase">Reason</span>
-                    <span className="text-xs italic">"{item.reason}"</span>
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase">Address</span>
+                    <span className="text-xs">{item.address}</span>
+                  </div>
+                  <div className="col-span-2 flex gap-4 text-xs">
+                    {item.uploadPassport !== "-" && <a href={item.uploadPassport} target="_blank" className="text-indigo-600 underline text-[10px]">📄 Passport</a>}
+                    {item.uploadResume !== "-" && <a href={item.uploadResume} target="_blank" className="text-indigo-600 underline text-[10px]">📎 Resume</a>}
                   </div>
                 </div>
               </div>
@@ -470,4 +509,4 @@ const LeaveManagement = () => {
   );
 };
 
-export default LeaveManagement;
+export default Artical;

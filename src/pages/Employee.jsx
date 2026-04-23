@@ -1,731 +1,971 @@
-import React, { useEffect, useState } from "react";
-import { 
-  Filter, Search, Clock, CheckCircle, ImageIcon, User, Briefcase, 
-  MapPin, Phone, Layout, History, ChevronDown, Check, Calendar, 
-  ArrowRight, ClipboardCheck, X, Eye, FileText, Download, Plus, Mail,
-  CreditCard, GraduationCap, Building2, Landmark, History as HistoryIcon 
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import {
+  Search,
+  RefreshCw,
+  ChevronUp,
+  ChevronDown,
+  ChevronRight,
+  X,
+  XCircle,
+  Building2,
+  Users,
+  GraduationCap,
+  Briefcase,
 } from "lucide-react";
-import { toast } from "react-hot-toast";
-import LoadingSpinner from "../components/LoadingSpinner";
+import { getCache, setCache } from "../utils/dataCache";
+import toast from "react-hot-toast";
 
-// 🚀 Mock Data Generator (20 Rows)
-const generateMockData = () => {
-  const departments = ["Engineering", "HR", "Sales", "Finance", "Operations", "Marketing"];
-  const designations = ["Software Engineer", "HR Manager", "Sales Executive", "Accountant", "Project Manager", "Creative Director"];
-  const relationships = ["Father", "Mother", "Spouse"];
+const CACHE_KEY = "articles_master";
 
-  const active = Array.from({ length: 20 }).map((_, i) => ({
-    id: `EMP${1001 + i}`,
-    employeeId: `EMP${1001 + i}`,
-    candidateName: [
-      "Rahul Sharma", "Priya Patel", "Amit Kumar", "Sneha Gupta", "Vikram Singh",
-      "Anjali Desai", "Rohan Mehta", "Sonal Varma", "Arjun Reddy", "Neha Kapoor",
-      "Sandeep Nair", "Pooja Hegde", "Karan Johar", "Aditi Rao", "Abhishek Das",
-      "Deepika Roy", "Vivek Joshi", "Shweta Tiwari", "Manish Paul", "Kirti Sanon"
-    ][i % 20],
-    fatherName: ["Suresh Sharma", "Vijay Patel", "Rajesh Kumar", "Manoj Gupta", "Harish Singh"][i % 5],
-    dateOfBirth: `19${85 + (i % 15)}-0${1 + (i % 9)}-${10 + (i % 18)}`,
-    gender: i % 2 === 0 ? "Male" : "Female",
-    mobileNo: `+91 ${98000 + i} 54321`,
-    emailId: `employee${i + 1}@gmail.com`,
-    familyNo: `+91 ${90000 + i} 11111`,
-    relationship: relationships[i % 3],
-    address: `${i + 101}, Skyline Apartments, Mumbai`,
-    joiningId: `SDII-${String(101 + i).padStart(3, '0')}`,
-    dateOfJoining: `2024-0${1 + (i % 3)}-${10 + (i % 18)}`,
-    department: departments[i % 6],
-    designation: designations[i % 6],
-    qualification: ["M.Tech CS", "MBA HR", "B.Tech IT", "CA", "PhD Marketing"][i % 5],
-    aadharNo: `XXXX XXXX ${1234 + i}`,
-    accountNo: `501000${98765 + i}`,
-    ifsc: `HDFC000123${i % 9}`,
-    branch: "Mumbai Main Branch",
-    status: "Active"
-  }));
-
-  const left = Array.from({ length: 5 }).map((_, i) => ({
-    id: `EMP${901 + i}`,
-    employeeId: `EMP${901 + i}`,
-    name: ["Sahil Khan", "Anita Raj", "Sameer Sen", "Dimple Kapur", "Rajesh Khanna"][i % 5],
-    designation: "Executive",
-    department: "Sales",
-    reasonOfLeaving: "Better Opportunity",
-    dateOfJoining: "2023-05-10",
-    dateOfLeaving: "2024-03-20",
-    mobileNo: `+91 91111 2222${i}`
-  }));
-
-  return { active, left };
-};
-
-const Employee = () => {
-  const [activeTab, setActiveTab] = useState("joining");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [joiningData, setJoiningData] = useState([]);
-  const [leavingData, setLeavingData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  // States Synced with Indent.jsx
-  const [filterDepartment, setFilterDepartment] = useState('');
-  const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
-  const [filterDate, setFilterDate] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(15);
-
-  const [formData, setFormData] = useState({
-    name: "", fatherName: "", dob: "", gender: "Male",
-    mobile: "", email: "", familyMobile: "", relationship: "", address: "",
-    joiningId: "", doj: "", department: "", designation: "", qualification: "",
-    aadhar: "", accountNo: "", ifsc: "", branch: ""
-  });
+/* ------------------------------------------------------------------ */
+/*  Custom Hook: useDebounce                                          */
+/* ------------------------------------------------------------------ */
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      const { active, left } = generateMockData();
-      setJoiningData(active);
-      setLeavingData(left);
-      setLoading(false);
-    }, 800);
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Shimmer Skeleton Loaders                                          */
+/* ------------------------------------------------------------------ */
+const ShimmerBar = ({ className = "" }) => (
+  <div
+    className={`relative overflow-hidden bg-gray-200/70 rounded ${className}`}
+  >
+    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+  </div>
+);
+
+const TableSkeleton = ({ columns = 22, rows = 10 }) => (
+  <div className="flex flex-col w-full h-[530px] border border-gray-200 rounded-lg bg-white shadow-sm overflow-hidden">
+    <div className="flex gap-0 bg-gray-50 border-b border-gray-200 px-2 py-3">
+      {Array(columns)
+        .fill()
+        .map((_, j) => (
+          <ShimmerBar key={j} className="h-4 flex-1 mx-2 rounded-sm" />
+        ))}
+    </div>
+    <div className="flex-1 divide-y divide-gray-100 px-2">
+      {Array(rows)
+        .fill()
+        .map((_, i) => (
+          <div key={i} className="flex items-center gap-0 py-3">
+            {Array(columns)
+              .fill()
+              .map((_, j) => (
+                <ShimmerBar
+                  key={j}
+                  className={`h-3.5 flex-1 mx-2 rounded-sm ${j === 0 ? "max-w-[40px]" : ""}`}
+                />
+              ))}
+          </div>
+        ))}
+    </div>
+  </div>
+);
+
+const CardSkeleton = () => (
+  <div className="space-y-3 p-2.5">
+    {[1, 2, 3, 4].map((i) => (
+      <div
+        key={i}
+        className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3"
+      >
+        <div className="flex justify-between items-center">
+          <ShimmerBar className="h-3 w-20" />
+          <ShimmerBar className="h-4 w-16 rounded-full" />
+        </div>
+        <div className="space-y-2 pt-1">
+          <ShimmerBar className="h-4 w-2/5" />
+          <ShimmerBar className="h-3 w-1/3" />
+        </div>
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-100">
+          <ShimmerBar className="h-3 w-1/4" />
+          <ShimmerBar className="h-3 w-full" />
+          <ShimmerBar className="h-3 w-3/4" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Helper Functions                                                  */
+/* ------------------------------------------------------------------ */
+const formatDate = (dateValue) => {
+  if (!dateValue) return "—";
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return String(dateValue);
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return String(dateValue);
+  }
+};
+
+const formatCurrency = (value) => {
+  if (!value) return "—";
+  const num = parseFloat(String(value).replace(/[^0-9.-]/g, ""));
+  return isNaN(num) ? String(value) : `₹${num.toLocaleString("en-IN")}`;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                    */
+/* ------------------------------------------------------------------ */
+const Employee = () => {
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Tab state: "Article", "Employee", "Intern"
+  const [activeRoleTab, setActiveRoleTab] = useState("Article");
+
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearchTerm = useDebounce(searchInput, 300);
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterGender, setFilterGender] = useState("");
+  const [filterLevel, setFilterLevel] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
+  const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
+  const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState(false);
+  const abortControllerRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // ------------------------------------------------------------------
+  //  Fetch data from Apps Script
+  // ------------------------------------------------------------------
+  const fetchData = useCallback(async (signal, isRefresh = false) => {
+    if (!isRefresh) {
+      const cachedData = getCache(CACHE_KEY);
+      if (cachedData) {
+        setItems(cachedData);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    if (isRefresh) setIsRefreshing(true);
+    else setIsLoading(true);
+
+    try {
+      const url = `${import.meta.env.VITE_DAILY_ATTENDENCE_SHEET_URL}?action=getArticlesMaster`;
+      const response = await fetch(url, { signal });
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
+
+      const json = await response.json();
+
+      // Force all fields to strings
+      const formatted = json.map((item, index) => ({
+        id: `article-${index}-${item.code || Date.now()}`,
+        code: String(item.code ?? "—"),
+        name: String(item.name ?? "—"),
+        studentRegNo: String(item.studentRegNo ?? "—"),
+        dateOfJoining: String(item.dateOfJoining ?? "—"),
+        department: String(item.department ?? "—"),
+        teamHead: String(item.teamHead ?? "—"),
+        registeredUnder: String(item.registeredUnder ?? "—"),
+        salaryAmount: String(item.salaryAmount ?? item.H ?? "—"),
+        articleshipPeriod: String(item.articleshipPeriod ?? item.I ?? "—"),
+        role: String(item.role ?? item.Role ?? item.ROLE ?? item.H ?? item.J ?? "—"),
+        gender: String(item.gender ?? "—"),
+        level: String(item.level ?? "—"),
+        joinedOn: String(item.joinedOn ?? "—"),
+        audit: String(item.audit ?? "—"),
+        tenureExpiringDate: String(item.tenureExpiringDate ?? "—"),
+        mobileNo: String(item.mobileNo ?? "—"),
+        articleEmail: String(item.articleEmail ?? "—"),
+        photo: String(item.photo ?? "—"),
+        accountNo: String(item.accountNo ?? "—"),
+        bankIfsc: String(item.bankIfsc ?? "—"),
+        bankName: String(item.bankName ?? "—"),
+        bankMisUse: String(item.bankMisUse ?? "—"),
+        accountNo2: String(item.accountNo2 ?? "—"),
+        trueFalse: String(item.trueFalse ?? "—"),
+      }));
+
+      setItems(formatted);
+      setCache(CACHE_KEY, formatted);
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.error("Fetch error:", error);
+        toast.error("Failed to load Articles Master data.");
+        setItems([]);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        if (isRefresh) setIsRefreshing(false);
+        else setIsLoading(false);
+      }
+    }
   }, []);
 
-  const formatDOB = (dateString) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
+  useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    fetchData(controller.signal);
+    return () => controller.abort();
+  }, [fetchData]);
+
+  const handleRefresh = useCallback(() => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    fetchData(controller.signal, true);
+  }, [fetchData]);
+
+  // ------------------------------------------------------------------
+  //  Clear all filters (excluding tab)
+  // ------------------------------------------------------------------
+  const clearAllFilters = useCallback(() => {
+    setSearchInput("");
+    setFilterDepartment("");
+    setFilterGender("");
+    setFilterLevel("");
+    setCurrentPage(1);
+  }, []);
+
+  const hasActiveFilters =
+    searchInput || filterDepartment || filterGender || filterLevel;
+
+  // ------------------------------------------------------------------
+  //  Sorting logic
+  // ------------------------------------------------------------------
+  const requestSort = (key) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
   };
 
-  const uniqueDepartments = [...new Set([...joiningData, ...leavingData].map(item => item.department).filter(Boolean))].sort();
+  const getSortedItems = useCallback(
+    (itemsToSort) => {
+      if (!sortConfig.key) return itemsToSort;
+      return [...itemsToSort].sort((a, b) => {
+        let aVal = a[sortConfig.key];
+        let bVal = b[sortConfig.key];
+        const aNum = parseFloat(String(aVal).replace(/[^0-9.-]/g, ""));
+        const bNum = parseFloat(String(bVal).replace(/[^0-9.-]/g, ""));
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return sortConfig.direction === "asc" ? aNum - bNum : bNum - aNum;
+        }
+        if (sortConfig.key.toLowerCase().includes("date")) {
+          const aDate = new Date(aVal),
+            bDate = new Date(bVal);
+          if (!isNaN(aDate) && !isNaN(bDate)) {
+            return sortConfig.direction === "asc"
+              ? aDate - bDate
+              : bDate - aDate;
+          }
+        }
+        aVal = String(aVal || "").toLowerCase();
+        bVal = String(bVal || "").toLowerCase();
+        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    },
+    [sortConfig],
+  );
 
-  const filteredJoiningData = joiningData.filter(item => {
-    const matchesSearch = !searchTerm || 
-      item.candidateName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      item.employeeId?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = !filterDepartment || item.department === filterDepartment;
-    
-    let matchesDate = true;
-    if (filterDate && item.dateOfJoining) {
-      const itemDate = new Date(item.dateOfJoining).toISOString().split('T')[0];
-      matchesDate = itemDate === filterDate;
+  // Read current user session
+  const user = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
     }
+  }, []);
+
+  // First, apply code-based data isolation.
+  // Admins see all records; others see only their own by code.
+  const codeFilteredItems = useMemo(() => {
+    // Look deeply into the cached user object for any capitalized versions of Role or column H 
+    // since the login API might have returned them that way and they are preserved via ...result
+    const cachedRole = String(
+      user?.role || user?.Role || user?.ROLE || user?.H || ""
+    ).trim().toLowerCase();
     
-    return matchesSearch && matchesDept && matchesDate;
-  });
+    const userCode = String(user?.code || "").trim().toLowerCase();
 
-  const filteredLeavingData = leavingData.filter(item => {
-    const matchesSearch = !searchTerm || 
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      item.employeeId?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = !filterDepartment || item.department === filterDepartment;
-    
-    let matchesDate = true;
-    if (filterDate && item.dateOfLeaving) {
-      const itemDate = new Date(item.dateOfLeaving).toISOString().split('T')[0];
-      matchesDate = itemDate === filterDate;
-    }
+    // Check role from the master data (items) as well
+    const currentUserData = items.find(
+      (item) => String(item.code ?? "").trim().toLowerCase() === userCode
+    );
+    const masterRole = currentUserData ? String(currentUserData.role || currentUserData.Role || currentUserData.ROLE || currentUserData.H || "").trim().toLowerCase() : "";
 
-    return matchesSearch && matchesDept && matchesDate;
-  });
+    const isAdmin = 
+      cachedRole === "admin" || 
+      user?.Admin === "Yes" || 
+      String(user?.Admin).toLowerCase() === "yes" ||
+      masterRole === "admin" ||
+      userCode === "admin";
 
-  const activeItems = activeTab === "joining" ? filteredJoiningData : filteredLeavingData;
+    return isAdmin
+      ? items
+      : userCode
+        ? items.filter(
+            (item) => String(item.code ?? "").trim().toLowerCase() === userCode
+          )
+        : [];
+  }, [items, user]);
+
+  // Then filter by active role tab
+  const roleFilteredItems = useMemo(() => {
+    return codeFilteredItems.filter((item) => {
+      const itemRole = String(item.role || "").trim().toLowerCase();
+      return itemRole === activeRoleTab.toLowerCase();
+    });
+  }, [codeFilteredItems, activeRoleTab]);
+
+  // Counts for tab badges - now based on what the user actually has access to!
+  const articleCount = useMemo(() => {
+    return codeFilteredItems.filter(
+      (item) => String(item.role).trim().toLowerCase() === "article",
+    ).length;
+  }, [codeFilteredItems]);
+
+  const employeeCount = useMemo(() => {
+    return codeFilteredItems.filter(
+      (item) => String(item.role).trim().toLowerCase() === "employee",
+    ).length;
+  }, [codeFilteredItems]);
+
+  const internCount = useMemo(() => {
+    return codeFilteredItems.filter(
+      (item) => String(item.role).trim().toLowerCase() === "intern",
+    ).length;
+  }, [codeFilteredItems]);
+
+  // Then apply other filters
+  const filteredAndSortedItems = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    const filtered = roleFilteredItems.filter((item) => {
+      const matchesSearch = !term
+        ? true
+        : String(item.name).toLowerCase().includes(term) ||
+          String(item.code).toLowerCase().includes(term) ||
+          String(item.studentRegNo).toLowerCase().includes(term) ||
+          String(item.department).toLowerCase().includes(term) ||
+          String(item.role).toLowerCase().includes(term) ||
+          String(item.mobileNo).toLowerCase().includes(term) ||
+          String(item.articleEmail).toLowerCase().includes(term);
+      const matchesDept =
+        !filterDepartment || item.department === filterDepartment;
+      const matchesGender = !filterGender || item.gender === filterGender;
+      const matchesLevel = !filterLevel || item.level === filterLevel;
+      return matchesSearch && matchesDept && matchesGender && matchesLevel;
+    });
+    return getSortedItems(filtered);
+  }, [
+    roleFilteredItems,
+    debouncedSearchTerm,
+    filterDepartment,
+    filterGender,
+    filterLevel,
+    getSortedItems,
+  ]);
+
+  const departments = useMemo(
+    () =>
+      [
+        ...new Set(roleFilteredItems.map((d) => d.department).filter(Boolean)),
+      ].sort(),
+    [roleFilteredItems],
+  );
+  const genders = useMemo(
+    () =>
+      [
+        ...new Set(roleFilteredItems.map((d) => d.gender).filter(Boolean)),
+      ].sort(),
+    [roleFilteredItems],
+  );
+  const levels = useMemo(
+    () =>
+      [
+        ...new Set(roleFilteredItems.map((d) => d.level).filter(Boolean)),
+      ].sort(),
+    [roleFilteredItems],
+  );
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = activeItems.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.max(1, Math.ceil(activeItems.length / itemsPerPage));
+  const currentItems = filteredAndSortedItems.slice(
+    indexOfFirstItem,
+    indexOfLastItem,
+  );
+  const totalPages = Math.ceil(filteredAndSortedItems.length / itemsPerPage);
 
-  const paginate = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const SortHeader = ({ label, sortKey, align = "center" }) => {
+    const isActive = sortConfig.key === sortKey;
+    const isAsc = isActive && sortConfig.direction === "asc";
+    return (
+      <th
+        onClick={() => requestSort(sortKey)}
+        className={`px-4 py-3 text-${align} text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors select-none group`}
+      >
+        <div
+          className={`flex items-center gap-1.5 justify-${align === "center" ? "center" : align === "left" ? "start" : "end"}`}
+        >
+          {label}
+          <div className="flex flex-col opacity-40 group-hover:opacity-100 transition-opacity">
+            <ChevronUp
+              size={10}
+              className={
+                isActive && isAsc
+                  ? "text-indigo-600 opacity-100"
+                  : "text-gray-400"
+              }
+            />
+            <ChevronDown
+              size={10}
+              className={
+                isActive && !isAsc
+                  ? "text-indigo-600 opacity-100"
+                  : "text-gray-400 -mt-1"
+              }
+            />
+          </div>
+        </div>
+      </th>
+    );
   };
 
   const renderPaginationNav = () => (
     <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px w-full justify-center sm:w-auto" aria-label="Pagination">
-      <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="relative inline-flex items-center px-1.5 py-1 sm:px-2 sm:py-1 rounded-l-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-        <span className="sr-only">Previous</span>
-        <svg className="h-4 w-4 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+      <button
+        onClick={() => paginate(currentPage - 1)}
+        disabled={currentPage === 1}
+        aria-label="Previous page"
+        className="relative inline-flex items-center px-1.5 py-1.5 rounded-l-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 focus:z-10 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        <ChevronRight className="h-4 w-4 rotate-180" />
       </button>
-
-      {[...Array(totalPages)].map((_, i) => {
-        const pageNum = i + 1;
-        if (pageNum === 1 || pageNum === totalPages || (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)) {
-          return (
-            <button key={pageNum} onClick={() => paginate(pageNum)} className={`relative inline-flex items-center px-2.5 py-1 sm:px-3 sm:py-1 border text-xs sm:text-sm font-medium ${currentPage === pageNum ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}>
-              {pageNum}
-            </button>
-          );
-        } else if ((pageNum === currentPage - 2 && pageNum > 1) || (pageNum === currentPage + 2 && pageNum < totalPages)) {
-          return <span key={pageNum} className="relative inline-flex items-center px-2 py-1 sm:px-3 sm:py-1 border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-700">...</span>;
-        }
-        return null;
-      })}
-
-      <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="relative inline-flex items-center px-1.5 py-1 sm:px-2 sm:py-1 rounded-r-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-        <span className="sr-only">Next</span>
-        <svg className="h-4 w-4 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+      {[...Array(Math.max(1, Math.min(5, totalPages || 1)))].map((_, i) => (
+        <button
+          key={i}
+          onClick={() => paginate(i + 1)}
+          aria-current={currentPage === i + 1 ? "page" : undefined}
+          className={`relative inline-flex items-center px-3 py-1.5 border text-[11px] font-bold transition-all duration-200 focus:z-10 focus:ring-2 focus:ring-indigo-500 focus:outline-none ${currentPage === i + 1 ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600" : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"}`}
+        >
+          {i + 1}
+        </button>
+      ))}
+      <button
+        onClick={() => paginate(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        aria-label="Next page"
+        className="relative inline-flex items-center px-1.5 py-1.5 rounded-r-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 focus:z-10 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        <ChevronRight className="h-4 w-4" />
       </button>
     </nav>
   );
 
-  const handleAddEmployee = (e) => {
-    e.preventDefault();
-    toast.success("Employee data added successfully (Demo Mode)");
-    setShowAddModal(false);
-    setFormData({
-      name: "", fatherName: "", dob: "", gender: "Male",
-      mobile: "", email: "", familyMobile: "", relationship: "Father", address: "",
-      joiningId: "", doj: "", department: "Engineering", designation: "Software Engineer", qualification: "",
-      aadhar: "", accountNo: "", ifsc: "", branch: ""
-    });
-  };
+  const FilterDropdown = ({
+    isOpen,
+    setIsOpen,
+    options,
+    value,
+    setValue,
+    label,
+    icon: Icon,
+    allLabel,
+  }) => (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        className="flex items-center gap-2 h-9 px-4 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200 whitespace-nowrap"
+      >
+        <Icon size={14} />
+        <span className="text-[11px] font-bold uppercase tracking-wider">
+          {value || allLabel}
+        </span>
+        <ChevronDown
+          size={14}
+          className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden py-1">
+            <div
+              onClick={() => {
+                setValue("");
+                setIsOpen(false);
+                setCurrentPage(1);
+              }}
+              className={`px-4 py-2 text-[11px] cursor-pointer hover:bg-gray-50 ${!value ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
+            >
+              {allLabel}
+            </div>
+            {options.map((opt) => (
+              <div
+                key={opt}
+                onClick={() => {
+                  setValue(opt);
+                  setIsOpen(false);
+                  setCurrentPage(1);
+                }}
+                className={`px-4 py-2 text-[11px] cursor-pointer hover:bg-gray-50 ${value === opt ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
+              >
+                {opt}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   return (
-    <div className="space-y-3 md:pb-4 mb-4 font-outfit">
-      
-      {/* 🚀 Unified Toolbar - Synced with Indent.jsx */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 md:gap-4">
-        <div className="flex items-center gap-4">
-          
-          {/* Segmented Tab Control */}
-          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 shadow-sm self-start sm:self-center">
-            <button 
-              onClick={() => { setActiveTab("joining"); setCurrentPage(1); }}
-              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${activeTab === "joining" 
-                ? "bg-white text-indigo-600 shadow-sm border border-gray-200" 
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+    <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 py-1 space-y-4 pb-20 md:pb-8 font-outfit">
+      {/* Header with Tabs */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 flex-wrap">
+        <div className="flex flex-wrap items-center gap-4">
+          <h2 className="text-xl font-bold text-gray-800 tracking-tight shrink-0">
+            Articles Master
+          </h2>
+
+          {/* Role Tabs */}
+          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 shadow-sm overflow-x-auto scrollbar-hide shrink-0">
+            <button
+              onClick={() => {
+                setActiveRoleTab("Article");
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${
+                activeRoleTab === "Article"
+                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
-              <CheckCircle size={13} strokeWidth={3} />
-              <span>Active ({filteredJoiningData.length})</span>
+              <Briefcase size={13} strokeWidth={3} />
+              <span>Articles ({articleCount})</span>
             </button>
-            <button 
-              onClick={() => { setActiveTab("leaving"); setCurrentPage(1); }}
-              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${activeTab === "leaving" 
-                ? "bg-white text-rose-600 shadow-sm border border-gray-200" 
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            <button
+              onClick={() => {
+                setActiveRoleTab("Employee");
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${
+                activeRoleTab === "Employee"
+                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
-              <HistoryIcon size={13} strokeWidth={3} />
-              <span>Left ({filteredLeavingData.length})</span>
+              <Users size={13} strokeWidth={3} />
+              <span>Employees ({employeeCount})</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveRoleTab("Intern");
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${
+                activeRoleTab === "Intern"
+                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <GraduationCap size={13} strokeWidth={3} />
+              <span>Interns ({internCount})</span>
             </button>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
-          {/* Mobile Top Row: Search + Create Button */}
-          <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search workforce..."
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full text-xs sm:text-sm shadow-sm font-medium uppercase"
-              />
-            </div>
-            <button 
-               onClick={() => setShowAddModal(true)}
-               className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-xs font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-700 transition-all duration-200 shrink-0 shadow-lg shadow-indigo-100"
-            >
-               <Plus size={16} className="sm:mr-2" strokeWidth={3} />
-               <span className="hidden sm:inline">Add Employee</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 lg:flex lg:items-center gap-2 w-full sm:w-auto">
-            {/* Department Filter (Custom Dropdown) */}
-            <div className="relative">
-              <div
-                onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
-                className="flex items-center gap-2 h-9 px-3 border border-gray-300 rounded bg-white text-xs text-gray-700 cursor-pointer hover:border-indigo-500 transition shadow-sm relative overflow-hidden"
+        <div className="flex flex-col lg:flex-row lg:items-center justify-end gap-3 w-full xl:w-auto flex-1 flex-wrap">
+          {/* Search */}
+          <div className="relative flex-1 sm:w-64 max-w-sm group">
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors"
+              size={14}
+            />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search by Name, Code, Reg No..."
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-9 pr-8 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-full text-[13px] shadow-sm bg-white font-medium transition-all duration-200"
+            />
+            {searchInput && (
+              <button
+                onClick={() => {
+                  setSearchInput("");
+                  setCurrentPage(1);
+                  searchInputRef.current?.focus();
+                }}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <Layout size={12} className="text-gray-400 shrink-0" />
-                <span className="truncate font-bold uppercase">{filterDepartment || "All Dept"}</span>
-                <ChevronDown size={14} className={`ml-auto text-gray-400 transition-transform ${isDeptDropdownOpen ? 'rotate-180' : ''}`} />
-              </div>
-
-              {isDeptDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsDeptDropdownOpen(false)}></div>
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-xl z-50 overflow-hidden py-1 max-h-48 overflow-y-auto ring-1 ring-black ring-opacity-5">
-                    <div
-                      onClick={() => { setFilterDepartment(''); setIsDeptDropdownOpen(false); setCurrentPage(1); }}
-                      className={`px-3 py-2 text-xs cursor-pointer hover:bg-gray-50 flex items-center justify-between ${!filterDepartment ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600'}`}
-                    >
-                      All Departments
-                      {!filterDepartment && <Check size={12} className="text-indigo-500" />}
-                    </div>
-                    {uniqueDepartments.map((dept, index) => (
-                      <div
-                        key={index}
-                        onClick={() => { setFilterDepartment(dept); setIsDeptDropdownOpen(false); setCurrentPage(1); }}
-                        className={`px-3 py-2 text-xs cursor-pointer hover:bg-gray-50 flex items-center justify-between ${filterDepartment === dept ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600'}`}
-                      >
-                        {dept}
-                        {filterDepartment === dept && <Check size={12} className="text-indigo-500" />}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Date Filter */}
-            <div className="relative">
-              <div className="flex items-center gap-2 h-9 px-3 border border-gray-300 rounded bg-white text-xs text-gray-700 relative overflow-hidden shadow-sm">
-                <Calendar size={12} className="text-gray-400 shrink-0" />
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => { setFilterDate(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-transparent focus:outline-none text-[11px] font-bold cursor-pointer uppercase"
-                />
-              </div>
-            </div>
+                <XCircle size={14} />
+              </button>
+            )}
           </div>
+
+          {/* Filters */}
+          <FilterDropdown
+            isOpen={isDeptDropdownOpen}
+            setIsOpen={setIsDeptDropdownOpen}
+            options={departments}
+            value={filterDepartment}
+            setValue={setFilterDepartment}
+            label={filterDepartment || "All Dept"}
+            icon={Building2}
+            allLabel="All Departments"
+          />
+          <FilterDropdown
+            isOpen={isGenderDropdownOpen}
+            setIsOpen={setIsGenderDropdownOpen}
+            options={genders}
+            value={filterGender}
+            setValue={setFilterGender}
+            label={filterGender || "All Gender"}
+            icon={Users}
+            allLabel="All Genders"
+          />
+          <FilterDropdown
+            isOpen={isLevelDropdownOpen}
+            setIsOpen={setIsLevelDropdownOpen}
+            options={levels}
+            value={filterLevel}
+            setValue={setFilterLevel}
+            label={filterLevel || "All Level"}
+            icon={GraduationCap}
+            allLabel="All Levels"
+          />
+
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              className="flex items-center justify-center gap-1.5 h-9 px-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400/20"
+            >
+              <X size={12} /> Clear
+            </button>
+          )}
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center justify-center gap-2 h-9 px-4 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw
+              size={14}
+              className={isRefreshing ? "animate-spin text-indigo-500" : ""}
+            />{" "}
+            Refresh
+          </button>
         </div>
       </div>
 
-      {/* 📊 Main Content Container - Synced with Indent.jsx */}
-      <div className="overflow-hidden border border-gray-200 rounded-lg bg-white min-h-[530px] flex flex-col shadow-sm">
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center p-12">
-            <LoadingSpinner message="Retrieving workforce data..." minHeight="450px" />
-          </div>
+      <div className="hidden md:block overflow-hidden border border-gray-200 rounded-xl bg-white min-h-[530px] shadow-sm hover:shadow-md transition-shadow duration-300">
+        {isLoading ? (
+          <TableSkeleton columns={22} rows={10} />
         ) : (
           <>
-            <div className="flex-1 flex flex-col">
-              {/* Desktop Table View */}
-              <div className="hidden md:flex flex-col border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm flex-1">
-                <div className="max-h-[calc(105vh-280px)] min-h-[530px] overflow-auto scrollbar-hide">
-                  <table className="w-max min-w-full divide-y divide-gray-200 text-left">
-                    <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm border-b border-gray-100">
-                      {activeTab === "joining" ? (
-                        <tr>
-                          <th className="px-4 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Sr.</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap sticky left-0 z-30 bg-gray-50 shadow-sm border-r border-gray-100">E-ID</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Full Name</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Father's Name</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Joined Date</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">DOB</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Gender</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Mobile No</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Email ID</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Family No</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Relation</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Address</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Department</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Designation</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Qual.</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Aadhar</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Account No</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">IFSC</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Branch</th>
-                        </tr>
-                      ) : (
-                        <tr>
-                          <th className="px-4 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Sr.</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap sticky left-0 z-30 bg-gray-50 shadow-sm border-r border-gray-100">E-ID</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Name</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Designation</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Department</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Reason</th>
-                          <th className="px-6 py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Left Date</th>
-                        </tr>
-                      )}
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {currentItems.length === 0 ? (
-                        <tr>
-                          <td colSpan="25" className="px-4 py-32 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">
-                            No workforce records found.
-                          </td>
-                        </tr>
-                      ) : activeTab === "joining" ? (
-                        currentItems.map((emp, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                            <td className="px-4 py-4 whitespace-nowrap text-center text-[10px] text-gray-400 font-bold">{indexOfFirstItem + idx + 1}</td>
-                            <td className="px-6 py-4 whitespace-nowrap sticky left-0 z-10 bg-white/95 backdrop-blur group-hover:bg-gray-50/95 border-r border-gray-100 shadow-sm transition-colors text-center">
-                              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">#{emp.employeeId}</p>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-xs font-black text-gray-800 uppercase italic">
-                              {emp.candidateName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-bold text-gray-600 uppercase">
-                              {emp.fatherName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-bold text-gray-500">
-                              {formatDOB(emp.dateOfJoining)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-bold text-gray-500">
-                              {formatDOB(emp.dateOfBirth)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[10px] font-bold text-gray-400 uppercase">
-                              {emp.gender}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-bold text-gray-700 italic">
-                              {emp.mobileNo}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] text-indigo-600 font-medium underline">
-                              {emp.emailId || "—"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-bold text-gray-700 italic opacity-60">
-                              {emp.familyNo || "—"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                              {emp.relationship || "—"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[10px] font-medium text-gray-500 max-w-[150px] truncate">
-                              {emp.address}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-black text-gray-500 uppercase tracking-tighter">
-                              {emp.department}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-xs font-bold text-gray-700 uppercase">
-                              {emp.designation}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[10px] font-bold text-gray-400 uppercase">
-                              {emp.qualification}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-medium text-gray-600 italic">
-                              {emp.aadharNo}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-bold text-gray-700 tracking-widest">
-                              {emp.accountNo || "—"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[10px] font-black text-gray-400 uppercase">
-                              {emp.ifsc || "—"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[10px] font-medium text-gray-500 uppercase">
-                              {emp.branch || "—"}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        currentItems.map((emp, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors group">
-                            <td className="px-4 py-4 whitespace-nowrap text-center text-[10px] text-gray-400 font-bold">{indexOfFirstItem + idx + 1}</td>
-                            <td className="px-6 py-4 whitespace-nowrap sticky left-0 z-10 bg-white/95 backdrop-blur group-hover:bg-gray-50/95 border-r border-gray-100 shadow-sm transition-colors text-center text-[10px] font-black text-rose-500 uppercase tracking-widest">
-                              #{emp.employeeId}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-xs font-black text-gray-800 uppercase italic">
-                              {emp.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-xs font-bold text-gray-700 uppercase">
-                              {emp.designation}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-black text-gray-500 uppercase tracking-tighter">
-                              {emp.department}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[10px] text-rose-400 font-bold italic tracking-tighter truncate max-w-[150px]">
-                              "{emp.reasonOfLeaving}"
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center text-[11px] font-bold text-rose-600 bg-rose-50/20 shadow-inner">
-                              {formatDOB(emp.dateOfLeaving)}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Mobile Card View - Synced with Indent.jsx */}
-              <div className="md:hidden flex flex-col h-[calc(100vh-240px)] bg-gray-50">
-                <div className="flex-1 p-2.5 space-y-3 overflow-y-auto scrollbar-hide">
+            <div className="table-container max-h-[calc(105vh-280px)] min-h-[530px] overflow-x-auto overflow-y-auto scrollbar-hide">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <SortHeader label="Code" sortKey="code" />
+                    <SortHeader label="Name" sortKey="name" />
+                    <SortHeader label="Reg No" sortKey="studentRegNo" />
+                    <SortHeader label="Joining" sortKey="dateOfJoining" />
+                    <SortHeader label="Dept" sortKey="department" />
+                    <SortHeader label="Team Head" sortKey="teamHead" />
+                    <SortHeader label="Reg Under" sortKey="registeredUnder" />
+                    <SortHeader label="Salary" sortKey="salaryAmount" />
+                    <SortHeader label="Period" sortKey="articleshipPeriod" />
+                    <SortHeader label="Role" sortKey="role" />
+                    <SortHeader label="Gender" sortKey="gender" />
+                    <SortHeader label="Level" sortKey="level" />
+                    <SortHeader label="Joined On" sortKey="joinedOn" />
+                    <SortHeader label="Audit" sortKey="audit" />
+                    <SortHeader
+                      label="Tenure End"
+                      sortKey="tenureExpiringDate"
+                    />
+                    <SortHeader label="Mobile" sortKey="mobileNo" />
+                    <SortHeader label="Email" sortKey="articleEmail" />
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                      Photo
+                    </th>
+                    <SortHeader label="Account No" sortKey="accountNo" />
+                    <SortHeader label="IFSC" sortKey="bankIfsc" />
+                    <SortHeader label="Bank" sortKey="bankName" />
+                    <SortHeader label="MIS Use" sortKey="bankMisUse" />
+                    <SortHeader label="Acct No2" sortKey="accountNo2" />
+                    <SortHeader label="T/F" sortKey="trueFalse" />
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
                   {currentItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 text-gray-500 text-xs font-bold uppercase tracking-widest border-2 border-dashed border-gray-200 rounded-xl">No records found.</div>
-                  ) : activeTab === "joining" ? (
-                    currentItems.map((emp, idx) => (
-                      <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3 relative overflow-hidden group hover:border-indigo-200 transition-all duration-300">
-                        <div className="flex justify-between items-center bg-gray-50/80 -mx-3 -mt-3 p-2.5 px-3 border-b border-gray-100 mb-0.5">
-                          <div className="flex items-center gap-2">
-                             <div className="w-1 h-3 bg-indigo-600 rounded-full"></div>
-                             <span className="font-black text-indigo-600 text-[10px] tracking-tighter uppercase">#{emp.employeeId}</span>
-                          </div>
-                          <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider">{emp.department}</span>
-                        </div>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-black text-gray-800 text-sm tracking-tight leading-none uppercase">{emp.candidateName}</h3>
-                            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter mt-1.5 italic">{emp.designation}</p>
-                          </div>
-                          <div className="flex flex-col items-end">
-                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none">Status</span>
-                             <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded mt-1 shadow-sm">ACTIVE</span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-50">
-                          <div className="space-y-0.5">
-                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-tighter block opacity-60">Joined Date</span>
-                            <div className="flex items-center gap-1.5 font-bold text-gray-700 text-[10px]">
-                               <Calendar size={10} className="text-indigo-400" />
-                               {formatDOB(emp.dateOfJoining)}
-                            </div>
-                          </div>
-                          <div className="space-y-0.5">
-                             <span className="text-[9px] text-gray-400 font-black uppercase tracking-tighter block opacity-60">Mobile No</span>
-                             <div className="text-[10px] font-bold text-gray-700 italic">{emp.mobileNo}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                    <tr>
+                      <td
+                        colSpan="24"
+                        className="px-6 py-24 text-center text-gray-500"
+                      >
+                        No records found.
+                      </td>
+                    </tr>
                   ) : (
-                    currentItems.map((emp, idx) => (
-                      <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3 relative overflow-hidden group hover:border-rose-200 transition-all duration-300">
-                        <div className="flex justify-between items-center bg-gray-50/80 -mx-3 -mt-3 p-2.5 px-3 border-b border-gray-100 mb-0.5">
-                          <div className="flex items-center gap-2">
-                             <div className="w-1 h-3 bg-rose-600 rounded-full"></div>
-                             <span className="font-black text-rose-600 text-[10px] tracking-tighter uppercase">#{emp.employeeId}</span>
-                          </div>
-                          <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider">{emp.department}</span>
-                        </div>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-black text-gray-800 text-sm tracking-tight uppercase leading-none">{emp.name}</h3>
-                            <p className="text-[10px] font-bold text-rose-400 italic mt-1.5">"{emp.reasonOfLeaving}"</p>
-                          </div>
-                          <div className="flex flex-col items-end text-right">
-                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none">Exit Date</span>
-                             <span className="text-[10px] font-black text-rose-600 uppercase italic mt-1">{formatDOB(emp.dateOfLeaving)}</span>
-                          </div>
-                        </div>
-                      </div>
+                    currentItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-indigo-50/50 transition-colors">
+                        <td className="px-4 py-4 text-center text-sm font-bold text-indigo-700">
+                          {item.code}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-900">
+                          {item.name}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.studentRegNo}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {formatDate(item.dateOfJoining)}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.department}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.teamHead}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.registeredUnder}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-bold text-indigo-600">
+                          {formatCurrency(item.salaryAmount)}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.articleshipPeriod}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.role.toLowerCase() === "article" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"}`}
+                          >
+                            {item.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.gender}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.level}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {formatDate(item.joinedOn)}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.audit}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {formatDate(item.tenureExpiringDate)}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.mobileNo}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-indigo-600 underline">
+                          {item.articleEmail !== "—" ? (
+                            <a href={`mailto:${item.articleEmail}`}>
+                              {item.articleEmail}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.photo !== "—" ? (
+                            <a
+                              href={item.photo}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-indigo-600 underline"
+                            >
+                              View
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600 font-mono">
+                          {item.accountNo}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600 uppercase">
+                          {item.bankIfsc}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.bankName}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          {item.bankMisUse}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600 font-mono">
+                          {item.accountNo2}
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-medium text-gray-600">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.trueFalse === "TRUE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
+                          >
+                            {item.trueFalse}
+                          </span>
+                        </td>
+                      </tr>
                     ))
                   )}
-                </div>
-                {/* Mobile Sticky Pagination */}
-                <div className="border-t border-gray-200 bg-white p-2.5 flex justify-center sticky bottom-0 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-                  {renderPaginationNav()}
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
 
-            {/* Pagination Detail Footer - Desktop */}
-            <div className="hidden md:flex px-4 py-2 bg-white border-t border-gray-200 items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-4 flex-wrap">
-                <p className="text-[13px] text-gray-600 font-medium tracking-wide">
-                  Showing <span className="font-bold text-gray-900">{activeItems.length > 0 ? indexOfFirstItem + 1 : 0}</span> to <span className="font-bold text-gray-900">{Math.min(indexOfLastItem, activeItems.length)}</span> of <span className="font-bold text-gray-900">{activeItems.length}</span> records
+            {/* Pagination */}
+            <div className="hidden md:flex px-4 py-3 bg-white border-t border-gray-200 flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <p className="text-[13px] text-gray-600">
+                  Showing{" "}
+                  <span className="font-bold">
+                    {filteredAndSortedItems.length > 0
+                      ? indexOfFirstItem + 1
+                      : 0}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-bold">
+                    {Math.min(indexOfLastItem, filteredAndSortedItems.length)}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-bold">
+                    {filteredAndSortedItems.length}
+                  </span>{" "}
+                  records
                 </p>
-                <div className="flex items-center gap-2 border-l border-gray-300 pl-4 h-5">
-                  <label className="text-xs text-gray-500 font-medium whitespace-nowrap">Rows per page:</label>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                    className="text-[11px] border border-gray-200 rounded-md px-2 py-0.5 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-white font-black text-gray-700 outline-none transition shadow-sm"
-                  >
-                    {[15, 30, 50, 100].map(val => <option key={val} value={val}>{val}</option>)}
-                  </select>
-                </div>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="text-xs bg-transparent font-medium text-gray-700 outline-none"
+                >
+                  {[15, 30, 50, 100].map((val) => (
+                    <option key={val} value={val}>
+                      {val}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="flex items-center w-auto justify-end">
-                {renderPaginationNav()}
-              </div>
+              {renderPaginationNav()}
             </div>
           </>
         )}
       </div>
 
-      {/* 📋 Recruitment Modal - FIXED & COMPACT UI */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-4xl max-h-[90vh] animate-in zoom-in duration-300 overflow-hidden border border-slate-100 flex flex-col">
-              
-              {/* Modal Header (Compact) */}
-              <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-xl shadow-indigo-100">
-                    <Plus size={18} strokeWidth={3} />
+      {/* Mobile Card View */}
+      <div className="md:hidden flex flex-col h-[calc(105vh-280px)] bg-gray-50 rounded-xl overflow-hidden border border-gray-200 w-full relative shadow-sm">
+        <div className="flex-1 p-2.5 space-y-3 overflow-y-auto scrollbar-hide pb-24">
+          {isLoading ? (
+            <CardSkeleton />
+          ) : currentItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-gray-400 text-xs font-bold uppercase">
+              No records found.
+            </div>
+          ) : (
+            currentItems.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-xl border border-gray-200 p-3 space-y-3"
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-black text-indigo-600 text-sm">
+                    #{item.code}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.role.toLowerCase() === "article" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"}`}
+                  >
+                    {item.role}
+                  </span>
+                </div>
+                <h4 className="font-bold text-gray-800">{item.name}</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-400">Reg No:</span>{" "}
+                    {item.studentRegNo}
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-gray-800 tracking-tight uppercase italic">New Recruitment Entry</h3>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mt-0.5 opacity-60">Standalone Demo Mode • Compact UI</p>
+                    <span className="text-gray-400">Joining:</span>{" "}
+                    {formatDate(item.dateOfJoining)}
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Dept:</span>{" "}
+                    {item.department}
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Salary:</span>{" "}
+                    {formatCurrency(item.salaryAmount)}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-400">Mobile:</span>{" "}
+                    {item.mobileNo}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-400">Email:</span>{" "}
+                    {item.articleEmail}
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowAddModal(false)} 
-                  className="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-rose-500 group active:scale-90"
-                >
-                  <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-                </button>
               </div>
-
-              {/* Form Content (Reduced Gaps) */}
-              <form onSubmit={handleAddEmployee} className="flex-1 overflow-y-auto p-6 scrollbar-hide bg-white">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  {/* 1. Personal Information */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                       <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
-                         <User size={14} strokeWidth={2.5} />
-                       </div>
-                       <h4 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">1. Personal Details</h4>
-                    </div>
-                    <div className="space-y-3 px-1">
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Name (As per Aadhar) *</label>
-                          <input type="text" required placeholder="Ex: Rahul Sharma" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:font-medium uppercase" />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Father's Name *</label>
-                          <input type="text" required placeholder="Ex: Suresh Sharma" value={formData.fatherName} onChange={(e) => setFormData({...formData, fatherName: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:font-medium uppercase" />
-                       </div>
-                       <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Date of Birth *</label>
-                             <input type="date" required value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
-                          </div>
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Gender</label>
-                             <select value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer uppercase">
-                                <option>Male</option>
-                                <option>Female</option>
-                             </select>
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-
-                  {/* 2. Contact & Address */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                       <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
-                         <Phone size={14} strokeWidth={2.5} />
-                       </div>
-                       <h4 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">2. Contact Info</h4>
-                    </div>
-                    <div className="space-y-3 px-1">
-                       <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Mobile No *</label>
-                             <input type="tel" required placeholder="+91" value={formData.mobile} onChange={(e) => setFormData({...formData, mobile: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
-                          </div>
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Personal Email *</label>
-                             <input type="email" required placeholder="user@gmail.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none lowercase" />
-                          </div>
-                       </div>
-                       <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Family Contact</label>
-                             <input type="tel" placeholder="+91" value={formData.familyMobile} onChange={(e) => setFormData({...formData, familyMobile: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                          </div>
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Relation</label>
-                             <select value={formData.relationship} onChange={(e) => setFormData({...formData, relationship: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none uppercase">
-                                <option value="">Select Relation</option>
-                                <option>Father</option>
-                                <option>Mother</option>
-                                <option>Spouse</option>
-                             </select>
-                          </div>
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Current Address *</label>
-                          <input type="text" required placeholder="Full address..." value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all uppercase" />
-                       </div>
-                    </div>
-                  </div>
-
-                  {/* 3. Professional Details */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                       <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
-                         <Briefcase size={14} strokeWidth={2.5} />
-                       </div>
-                       <h4 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">3. Professional</h4>
-                    </div>
-                    <div className="space-y-3 px-1">
-                       <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Joining ID</label>
-                             <input type="text" placeholder="Auto" value={formData.joiningId} onChange={(e) => setFormData({...formData, joiningId: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
-                          </div>
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Date of Joining *</label>
-                             <input type="date" required value={formData.doj} onChange={(e) => setFormData({...formData, doj: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
-                          </div>
-                       </div>
-                       <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Department</label>
-                             <select value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-indigo-500 outline-none uppercase cursor-pointer">
-                                <option value="">Select Dept</option>
-                                <option>Engineering</option>
-                                <option>HR</option>
-                                <option>Sales</option>
-                                <option>Finance</option>
-                             </select>
-                          </div>
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Designation</label>
-                             <input type="text" placeholder="Role" value={formData.designation} onChange={(e) => setFormData({...formData, designation: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
-                          </div>
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Qualification *</label>
-                          <input type="text" required placeholder="Degree/Cert" value={formData.qualification} onChange={(e) => setFormData({...formData, qualification: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
-                       </div>
-                    </div>
-                  </div>
-
-                  {/* 4. Bank & KYC Info */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                       <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                         <Landmark size={14} strokeWidth={2.5} />
-                       </div>
-                       <h4 className="text-[10px] font-black text-gray-800 uppercase tracking-widest">4. KYC & Bank</h4>
-                    </div>
-                    <div className="space-y-3 px-1">
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Aadhar No *</label>
-                          <input type="text" required placeholder="XXXX XXXX XXXX" value={formData.aadhar} onChange={(e) => setFormData({...formData, aadhar: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-black tracking-widest text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Bank Account No *</label>
-                          <input type="text" required placeholder="000000000000" value={formData.accountNo} onChange={(e) => setFormData({...formData, accountNo: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                       </div>
-                       <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">IFSC Code *</label>
-                             <input type="text" required placeholder="SBIN000" value={formData.ifsc} onChange={(e) => setFormData({...formData, ifsc: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
-                          </div>
-                          <div className="space-y-1">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-0.5 opacity-70">Branch Name</label>
-                             <input type="text" placeholder="Location" value={formData.branch} onChange={(e) => setFormData({...formData, branch: e.target.value})} className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Modal Footer (Compact & Locked) */}
-                <div className="mt-6 flex justify-end gap-2 pb-2 sticky bottom-0 bg-white/95 backdrop-blur-sm pt-4 border-t border-slate-100 z-10">
-                    <button 
-                      type="button" 
-                      onClick={() => setShowAddModal(false)} 
-                      className="px-6 py-2 text-[9px] font-black text-gray-400 hover:bg-gray-50 rounded-xl transition-all uppercase tracking-widest border border-gray-100"
-                    >
-                      Discard
-                    </button>
-                    <button 
-                      type="submit"
-                      className="px-10 py-2 bg-indigo-600 text-white text-[9px] font-black rounded-xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all uppercase tracking-widest active:scale-95 flex items-center justify-center min-w-[200px]"
-                    >
-                      Complete Recruitment
-                    </button>
-                </div>
-              </form>
-          </div>
+            ))
+          )}
         </div>
-      )}
-
+        <div className="absolute border-t border-gray-200 bg-white p-2.5 flex flex-col items-center gap-2 bottom-0 w-full z-10">
+          <div className="flex items-center justify-between w-full px-2">
+            <p className="text-[10px] font-black text-gray-400">
+              Page {currentPage} of {totalPages || 1}
+            </p>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="text-[10px] font-black text-indigo-600 bg-transparent"
+            >
+              {[15, 30, 50].map((val) => (
+                <option key={val} value={val}>
+                  {val}
+                </option>
+              ))}
+            </select>
+          </div>
+          {renderPaginationNav()}
+        </div>
+      </div>
     </div>
   );
 };

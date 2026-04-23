@@ -6,6 +6,7 @@ import Footer from './Footer';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : null;
 
@@ -16,10 +17,12 @@ const Layout = () => {
       <Sidebar 
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-56 transition-all">
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         
         {/* Header - Sticky */}
         <Header 
@@ -34,7 +37,7 @@ const Layout = () => {
           </div>
         </main>
 
-        <Footer />
+        <Footer isCollapsed={isCollapsed} />
 
       </div>
     </div>

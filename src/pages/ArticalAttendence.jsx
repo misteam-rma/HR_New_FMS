@@ -16,12 +16,13 @@ import {
   Calendar,
   X,
   XCircle,
-  ExternalLink,
+  CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { getCache, setCache } from "../utils/dataCache";
 import toast from "react-hot-toast";
 
-const CACHE_KEY = "attendance_daily";
+const CACHE_KEY = "articles_attendance";
 
 /* ------------------------------------------------------------------ */
 /*  Custom Hook: useDebounce                                          */
@@ -53,7 +54,7 @@ const ShimmerBar = ({ className = "" }) => (
   </div>
 );
 
-const TableSkeleton = ({ columns = 14, rows = 10 }) => (
+const TableSkeleton = ({ columns = 18, rows = 10 }) => (
   <div className="flex flex-col w-full h-[530px] border border-gray-200 rounded-lg bg-white shadow-sm overflow-hidden">
     <div className="flex gap-0 bg-gray-50 border-b border-gray-200 px-2 py-3">
       {Array(columns)
@@ -72,7 +73,7 @@ const TableSkeleton = ({ columns = 14, rows = 10 }) => (
               .map((_, j) => (
                 <ShimmerBar
                   key={j}
-                  className={`h-3.5 flex-1 mx-2 rounded-sm ${j === 0 ? "max-w-[40px]" : j === 4 ? "max-w-[120px]" : ""
+                  className={`h-3.5 flex-1 mx-2 rounded-sm ${j === 0 ? "max-w-[40px]" : ""
                     }`}
                 />
               ))}
@@ -149,7 +150,6 @@ const formatTime = (timeValue) => {
     const timeStr = String(timeValue).trim();
     if (timeStr === "—") return "—";
 
-    // Try parsing as ISO time format (HH:MM:SS)
     if (timeStr.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
       const parts = timeStr.split(":");
       const hours = String(parts[0]).padStart(2, "0");
@@ -158,7 +158,6 @@ const formatTime = (timeValue) => {
       return seconds ? `${hours}:${minutes}:${seconds}` : `${hours}:${minutes}`;
     }
 
-    // Try parsing as date object
     const date = new Date(timeValue);
     if (!isNaN(date.getTime())) {
       return date.toLocaleTimeString("en-IN", {
@@ -177,30 +176,22 @@ const formatTime = (timeValue) => {
 /* ------------------------------------------------------------------ */
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
-const AttendanceDaily = () => {
+const ArticleAttendance = () => {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Get user data from localStorage (contains redirectUrl and attendanceUrl)
-  const user = useMemo(() => {
-    const userString = localStorage.getItem("user");
-    return userString ? JSON.parse(userString) : null;
-  }, []);
-
-  // Extract both URLs from the logged‑in user (fallback to env or placeholder)
-  const redirectUrl = user?.redirectUrl || import.meta.env.VITE_DAILY_ATTENDENCE_SHEET_URL;
-  const attendanceUrl = user?.attendanceUrl || "#";
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearchTerm = useDebounce(searchInput, 300);
   const [filterDepartment, setFilterDepartment] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterLocationCheck, setFilterLocationCheck] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
+  const [isLocCheckDropdownOpen, setIsLocCheckDropdownOpen] = useState(false);
   const abortControllerRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -221,16 +212,16 @@ const AttendanceDaily = () => {
     else setIsLoading(true);
 
     try {
-      const url = `${import.meta.env.VITE_DAILY_ATTENDENCE_SHEET_URL}?action=getEmployeesAttendance`;
+      const url = `${import.meta.env.VITE_DAILY_ATTENDENCE_SHEET_URL}?action=getArticlesAttendance`;
       const response = await fetch(url, { signal });
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
 
       const json = await response.json();
 
-      // Convert all fields to strings to avoid type errors later
+      // Force all fields to strings to avoid .toLowerCase errors
       const formatted = json.map((item, index) => ({
-        id: `emp-${index}-${item.timestamp || Date.now()}`,
+        id: `article-${index}-${item.timestamp || Date.now()}`,
         timestamp: String(item.timestamp ?? "—"),
         role: String(item.role ?? "—"),
         code: String(item.code ?? "—"),
@@ -242,9 +233,12 @@ const AttendanceDaily = () => {
         date: String(item.date ?? "—"),
         time: String(item.time ?? "—"),
         department: String(item.department ?? "—"),
-        staffName: String(item.staffName ?? "—"),
+        name: String(item.name ?? "—"),
         address: String(item.address ?? "—"),
-        locationStatus: String(item.locationStatus ?? "—"),
+        actualLatitude: String(item.actualLatitude ?? "—"),
+        actualLongitude: String(item.actualLongitude ?? "—"),
+        locationCheck: String(item.locationCheck ?? "—"),
+        timeWithBuffer: String(item.timeWithBuffer ?? "—"),
       }));
 
       setItems(formatted);
@@ -252,7 +246,7 @@ const AttendanceDaily = () => {
     } catch (error) {
       if (error.name !== "AbortError") {
         console.error("Fetch error:", error);
-        toast.error("Failed to load attendance logs.");
+        toast.error("Failed to load articles attendance logs.");
         setItems([]);
       }
     } finally {
@@ -284,10 +278,12 @@ const AttendanceDaily = () => {
     setSearchInput("");
     setFilterDepartment("");
     setFilterDate("");
+    setFilterLocationCheck("");
     setCurrentPage(1);
   }, []);
 
-  const hasActiveFilters = searchInput || filterDepartment || filterDate;
+  const hasActiveFilters =
+    searchInput || filterDepartment || filterDate || filterLocationCheck;
 
   // ------------------------------------------------------------------
   //  Sorting logic
@@ -340,82 +336,62 @@ const AttendanceDaily = () => {
     [sortConfig],
   );
 
-  // Data Isolation: Admins see all records; others see only their own by code.
-  const roleFilteredItems = useMemo(() => {
+  const user = useMemo(() => {
+    const userString = localStorage.getItem("user");
+    return userString ? JSON.parse(userString) : null;
+  }, []);
+
+  const filteredAndSortedItems = useMemo(() => {
     if (!user) return [];
     
-    // Look deeply into the cached user object for any capitalized versions of Role or column H 
-    const cachedRole = String(
-      user.role || user.Role || user.ROLE || user.H || ""
-    ).trim().toLowerCase();
-    
+    const userRole = String(user.role || "").trim().toLowerCase();
     const userCode = String(user.code || "").trim().toLowerCase();
 
-    // Check role from the master data (items) as well
-    const currentUserData = items.find(
-      (item) => String(item.code ?? "").trim().toLowerCase() === userCode
-    );
-    const masterRole = currentUserData ? String(currentUserData.role || currentUserData.Role || currentUserData.ROLE || currentUserData.H || "").trim().toLowerCase() : "";
-
     const isAdmin = 
-      cachedRole === "admin" || 
+      userRole === "admin" || 
+      user.isAdmin === true ||
       user.Admin === "Yes" || 
       String(user.Admin).toLowerCase() === "yes" ||
-      masterRole === "admin" ||
       userCode === "admin";
 
-    if (isAdmin) return items;
-    if (!userCode) return [];
-    
-    return items.filter(
-      (item) => String(item.code || "").trim().toLowerCase() === userCode
-    );
-  }, [items, user]);
+    const baseItems = isAdmin
+      ? items
+      : userCode
+        ? items.filter(
+            (item) => String(item.code || "").trim().toLowerCase() === userCode
+          )
+        : [];
 
-  // Enhanced search across many fields
-  const filteredAndSortedItems = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase().trim();
-    const filtered = roleFilteredItems.filter((item) => {
+    const filtered = baseItems.filter((item) => {
       const matchesSearch = !term
         ? true
-        : String(item.staffName ?? "")
-          .toLowerCase()
-          .includes(term) ||
-        String(item.code ?? "")
-          .toLowerCase()
-          .includes(term) ||
-        String(item.clientName ?? "")
-          .toLowerCase()
-          .includes(term) ||
-        String(item.role ?? "")
-          .toLowerCase()
-          .includes(term) ||
-        String(item.department ?? "")
-          .toLowerCase()
-          .includes(term) ||
-        String(item.address ?? "")
-          .toLowerCase()
-          .includes(term) ||
-        String(item.locationStatus ?? "")
-          .toLowerCase()
-          .includes(term);
-      const matchesDept =
-        !filterDepartment || item.department === filterDepartment;
+        : String(item.name ?? "").toLowerCase().includes(term) ||
+          String(item.code ?? "").toLowerCase().includes(term) ||
+          String(item.clientName ?? "").toLowerCase().includes(term) ||
+          String(item.role ?? "").toLowerCase().includes(term) ||
+          String(item.department ?? "").toLowerCase().includes(term) ||
+          String(item.address ?? "").toLowerCase().includes(term) ||
+          String(item.locationCheck ?? "").toLowerCase().includes(term);
+      const matchesDept = !filterDepartment || item.department === filterDepartment;
       const matchesDate = !filterDate || item.date === filterDate;
-      return matchesSearch && matchesDept && matchesDate;
+      const matchesLocCheck = !filterLocationCheck || item.locationCheck === filterLocationCheck;
+      return matchesSearch && matchesDept && matchesDate && matchesLocCheck;
     });
     return getSortedItems(filtered);
-  }, [
-    items,
-    debouncedSearchTerm,
-    filterDepartment,
-    filterDate,
-    getSortedItems,
-  ]);
+  }, [items, user, debouncedSearchTerm, filterDepartment, filterDate, filterLocationCheck, getSortedItems]);
+
 
   const departments = useMemo(() => {
     const depts = [...new Set(items.map((d) => d.department).filter(Boolean))];
     return depts.sort();
+  }, [items]);
+
+  const locationCheckOptions = useMemo(() => {
+    const options = [
+      ...new Set(items.map((d) => d.locationCheck).filter(Boolean)),
+    ];
+    return options.sort();
   }, [items]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -481,8 +457,8 @@ const AttendanceDaily = () => {
           key={i}
           onClick={() => paginate(i + 1)}
           className={`relative inline-flex items-center px-3 py-1.5 border text-[11px] font-bold transition-colors ${currentPage === i + 1
-            ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm"
-            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+              ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm"
+              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
             }`}
         >
           {i + 1}
@@ -503,7 +479,7 @@ const AttendanceDaily = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-gray-800 tracking-tight shrink-0">
-          Daily Attendance Logs
+          Articles Attendance Logs
         </h2>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-end gap-3 w-full md:w-auto flex-1">
@@ -589,6 +565,56 @@ const AttendanceDaily = () => {
             )}
           </div>
 
+          {/* Location Check Filter Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsLocCheckDropdownOpen(!isLocCheckDropdownOpen)}
+              className="flex items-center gap-2 h-9 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-all duration-200 whitespace-nowrap"
+            >
+              <AlertTriangle size={14} />
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                {filterLocationCheck || "All Checks"}
+              </span>
+              <ChevronDown
+                size={14}
+                className={`transition-transform ${isLocCheckDropdownOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {isLocCheckDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsLocCheckDropdownOpen(false)}
+                />
+                <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden py-1">
+                  <div
+                    onClick={() => {
+                      setFilterLocationCheck("");
+                      setIsLocCheckDropdownOpen(false);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-4 py-2 text-[11px] cursor-pointer hover:bg-gray-50 ${!filterLocationCheck ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
+                  >
+                    All Location Checks
+                  </div>
+                  {locationCheckOptions.map((option) => (
+                    <div
+                      key={option}
+                      onClick={() => {
+                        setFilterLocationCheck(option);
+                        setIsLocCheckDropdownOpen(false);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-4 py-2 text-[11px] cursor-pointer hover:bg-gray-50 ${filterLocationCheck === option ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Date Filter */}
           <div className="flex items-center gap-1 h-9 px-3 bg-white border border-gray-200 rounded-lg text-gray-700 shadow-sm">
             <Calendar size={14} className="text-gray-400" />
@@ -629,38 +655,16 @@ const AttendanceDaily = () => {
               Refresh
             </span>
           </button>
-
-          {/* Redirect URL Button (Column D) */}
-          <a
-            href={redirectUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-9 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-all duration-200 active:scale-95 whitespace-nowrap"
-          >
-            <ExternalLink size={14} />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Redirect URL</span>
-          </a>
-
-          {/* Fill Attendance Button (Column F) */}
-          <a
-            href={attendanceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-all duration-200 active:scale-95 whitespace-nowrap"
-          >
-            <ExternalLink size={14} />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Fill Attendance</span>
-          </a>
         </div>
       </div>
 
       {/* Desktop Table */}
       <div className="hidden md:block overflow-hidden border border-gray-200 rounded-lg bg-white min-h-[530px] shadow-sm">
         {isLoading ? (
-          <TableSkeleton columns={14} rows={10} />
+          <TableSkeleton columns={18} rows={10} />
         ) : (
           <>
-            <div className="table-container max-h-[calc(105vh-280px)] min-h-[530px] overflow-y-auto scrollbar-hide">
+            <div className="table-container max-h-[calc(105vh-280px)] min-h-[530px] overflow-x-auto overflow-y-auto scrollbar-hide">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                   <tr>
@@ -701,19 +705,30 @@ const AttendanceDaily = () => {
                       sortKey="department"
                       align="center"
                     />
-                    <SortHeader
-                      label="Staff Name"
-                      sortKey="staffName"
-                      align="center"
-                    />
+                    <SortHeader label="Name" sortKey="name" align="center" />
                     <SortHeader
                       label="Address"
                       sortKey="address"
                       align="center"
                     />
                     <SortHeader
-                      label="Loc. Status"
-                      sortKey="locationStatus"
+                      label="Actual Lat"
+                      sortKey="actualLatitude"
+                      align="center"
+                    />
+                    <SortHeader
+                      label="Actual Lng"
+                      sortKey="actualLongitude"
+                      align="center"
+                    />
+                    <SortHeader
+                      label="Location Check"
+                      sortKey="locationCheck"
+                      align="center"
+                    />
+                    <SortHeader
+                      label="Time With Buffer"
+                      sortKey="timeWithBuffer"
                       align="center"
                     />
                   </tr>
@@ -721,7 +736,7 @@ const AttendanceDaily = () => {
                 <tbody className="bg-white divide-y divide-gray-100">
                   {currentItems.length === 0 ? (
                     <tr>
-                      <td colSpan="14" className="px-6 py-24 text-center">
+                      <td colSpan="18" className="px-6 py-24 text-center">
                         <p className="text-gray-500 text-sm font-medium">
                           No records found.
                         </p>
@@ -747,10 +762,10 @@ const AttendanceDaily = () => {
                         <td className="px-4 py-4 whitespace-nowrap text-center">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border ${item.punchStatus === "IN"
-                              ? "bg-green-100 text-green-700 border-green-200"
-                              : item.punchStatus === "OUT"
-                                ? "bg-red-100 text-red-700 border-red-200"
-                                : "bg-gray-100 text-gray-600 border-gray-200"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : item.punchStatus === "OUT"
+                                  ? "bg-red-100 text-red-700 border-red-200"
+                                  : "bg-gray-100 text-gray-600 border-gray-200"
                               }`}
                           >
                             {item.punchStatus}
@@ -788,7 +803,7 @@ const AttendanceDaily = () => {
                           {item.department}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-900 font-medium">
-                          {item.staffName}
+                          {item.name}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-indigo-600 underline">
                           {item.address !== "—" ? (
@@ -807,8 +822,32 @@ const AttendanceDaily = () => {
                             "—"
                           )}
                         </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                          {item.actualLatitude}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                          {item.actualLongitude}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border ${item.locationCheck === "PASS"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : item.locationCheck === "FAIL"
+                                  ? "bg-red-100 text-red-700 border-red-200"
+                                  : "bg-gray-100 text-gray-600 border-gray-200"
+                              }`}
+                          >
+                            {item.locationCheck === "PASS" && (
+                              <CheckCircle size={10} />
+                            )}
+                            {item.locationCheck === "FAIL" && (
+                              <XCircle size={10} />
+                            )}
+                            {item.locationCheck}
+                          </span>
+                        </td>
                         <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-gray-600">
-                          {item.locationStatus}
+                          {formatTime(item.timeWithBuffer)}
                         </td>
                       </tr>
                     ))
@@ -884,21 +923,33 @@ const AttendanceDaily = () => {
                   <span className="font-black text-indigo-600 text-[10px] tracking-tighter uppercase">
                     #{item.code}
                   </span>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm ${item.punchStatus === "IN"
-                      ? "bg-green-100 text-green-700"
-                      : item.punchStatus === "OUT"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-gray-100 text-gray-600"
-                      }`}
-                  >
-                    {item.punchStatus}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${item.locationCheck === "PASS"
+                          ? "bg-green-100 text-green-700"
+                          : item.locationCheck === "FAIL"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                    >
+                      {item.locationCheck}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${item.punchStatus === "IN"
+                          ? "bg-green-100 text-green-700"
+                          : item.punchStatus === "OUT"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                    >
+                      {item.punchStatus}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0">
                     <h4 className="text-[13px] font-black text-gray-800 uppercase tracking-tight">
-                      {item.staffName}
+                      {item.name}
                     </h4>
                     <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest opacity-80">
                       {item.role} • {item.department}
@@ -920,6 +971,22 @@ const AttendanceDaily = () => {
                     </span>
                     <p className="text-[10px] font-bold text-gray-600">
                       {item.clientName}
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block opacity-60 italic">
+                      Actual Location
+                    </span>
+                    <p className="text-[10px] font-medium text-gray-600">
+                      {item.actualLatitude}, {item.actualLongitude}
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block opacity-60 italic">
+                      Buffer Time
+                    </span>
+                    <p className="text-[10px] font-medium text-gray-600">
+                      {formatTime(item.timeWithBuffer)}
                     </p>
                   </div>
                 </div>
@@ -957,7 +1024,6 @@ const AttendanceDaily = () => {
                       "—"
                     )}
                   </p>
-                  <p>📌 Status: {item.locationStatus}</p>
                 </div>
               </div>
             ))
@@ -995,4 +1061,4 @@ const AttendanceDaily = () => {
   );
 };
 
-export default AttendanceDaily;
+export default ArticleAttendance;

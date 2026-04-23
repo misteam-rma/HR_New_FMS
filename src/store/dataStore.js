@@ -15,13 +15,6 @@ const useDataStore = create(
         }]
       })),
 
-      // Social Site Data
-      socialSiteData: [],
-      moveSocialSiteToHistory: (id) => set((state) => ({
-        socialSiteData: state.socialSiteData.map(item => 
-          item.id === id ? { ...item, status: 'completed' } : item
-        )
-      })),
 
       // Find Enquiry Data
       findEnquiryData: [],
@@ -156,97 +149,8 @@ const useDataStore = create(
           appliedDate: new Date().toISOString().split('T')[0],
           status: 'Pending'
         }]
-      })),
+      }))
 
-      // Salary Data
-      salaryData: [
-        {
-          id: 1,
-          employeeId: 'EMP-0001',
-          month: 'January 2024',
-          basicSalary: 50000,
-          allowances: 10000,
-          overtime: 2000,
-          deductions: 5000,
-          netSalary: 57000,
-          status: 'Paid',
-          payDate: '2024-01-31'
-        },
-        {
-          id: 2,
-          employeeId: 'EMP-0001',
-          month: 'December 2023',
-          basicSalary: 50000,
-          allowances: 8000,
-          overtime: 1500,
-          deductions: 4500,
-          netSalary: 55000,
-          status: 'Paid',
-          payDate: '2023-12-31'
-        }
-      ],
-
-      // Employee Profile Data
-      employeeProfileData: {
-        'EMP-0001': {
-          employeeId: 'EMP-0001',
-          name: 'John Doe',
-          email: 'john.doe@company.com',
-          phone: '+1234567890',
-          department: 'IT',
-          designation: 'Software Developer',
-          joiningDate: '2023-06-01',
-          salary: 50000,
-          manager: 'Jane Smith',
-          workLocation: 'Head Office',
-          employeeType: 'Full Time',
-          bloodGroup: 'O+',
-          emergencyContact: '+1234567891',
-          address: '123 Main St, City, State 12345'
-        }
-      },
-
-      // Helper function to get filtered data based on user role
-      getFilteredData: (dataType, user) => {
-        const state = get();
-        if (user?.role === 'admin') {
-          return state[dataType] || [];
-        } else if (user?.role === 'employee') {
-          // Filter data for specific employee
-          const data = state[dataType] || [];
-          if (dataType === 'attendanceData' || dataType === 'leaveRequestsData' || dataType === 'salaryData') {
-            return data.filter(item => item.employeeId === user.employeeId);
-          }
-          return data;
-        }
-        return [];
-      },
-
-      // Initialize data from other stores
-      initializeFromIndent: () => {
-        const state = get();
-        state.indentData.forEach(indent => {
-          const existsInSocial = state.socialSiteData.find(item => item.indentId === indent.id);
-          if (!existsInSocial) {
-            state.socialSiteData.push({
-              ...indent,
-              indentId: indent.id,
-              status: 'pending'
-            });
-          }
-        });
-      },
-
-      initializeFromSocial: () => {
-        const state = get();
-        const completedSocial = state.socialSiteData.filter(item => item.status === 'completed');
-        completedSocial.forEach(social => {
-          const existsInEnquiry = state.findEnquiryData.find(item => item.indentId === social.indentId);
-          if (!existsInEnquiry) {
-            // This will be handled when enquiry is created
-          }
-        });
-      }
     }),
     {
       name: 'hr-fms-data-storage',
