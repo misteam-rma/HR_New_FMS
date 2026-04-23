@@ -17,6 +17,7 @@ import {
   Users,
   GraduationCap,
   Briefcase,
+  UserPlus,
 } from "lucide-react";
 import { getCache, setCache } from "../utils/dataCache";
 import toast from "react-hot-toast";
@@ -499,15 +500,15 @@ const Employee = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
-        className="flex items-center gap-2 h-9 px-4 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200 whitespace-nowrap"
+        className="flex items-center gap-2 h-10 px-4 bg-white border border-gray-200 hover:bg-gray-50 hover:border-indigo-300 text-gray-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 transition-all duration-200 whitespace-nowrap group"
       >
-        <Icon size={14} />
+        <Icon size={14} className="text-gray-400 group-hover:text-indigo-500 transition-colors" />
         <span className="text-[11px] font-bold uppercase tracking-wider">
           {value || allLabel}
         </span>
         <ChevronDown
           size={14}
-          className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
       {isOpen && (
@@ -516,30 +517,33 @@ const Employee = () => {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden py-1">
+          <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
             <div
               onClick={() => {
                 setValue("");
                 setIsOpen(false);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 text-[11px] cursor-pointer hover:bg-gray-50 ${!value ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
+              className={`px-4 py-2.5 text-[11px] cursor-pointer hover:bg-gray-50 transition-colors ${!value ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
             >
               {allLabel}
             </div>
-            {options.map((opt) => (
-              <div
-                key={opt}
-                onClick={() => {
-                  setValue(opt);
-                  setIsOpen(false);
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-2 text-[11px] cursor-pointer hover:bg-gray-50 ${value === opt ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
-              >
-                {opt}
-              </div>
-            ))}
+            <div className="h-px bg-gray-100 mx-2 my-1" />
+            <div className="max-h-60 overflow-y-auto scrollbar-hide">
+              {options.map((opt) => (
+                <div
+                  key={opt}
+                  onClick={() => {
+                    setValue(opt);
+                    setIsOpen(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-4 py-2.5 text-[11px] cursor-pointer hover:bg-gray-50 transition-colors ${value === opt ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-600"}`}
+                >
+                  {opt}
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -547,67 +551,98 @@ const Employee = () => {
   );
 
   return (
-    <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 py-1 space-y-4 pb-20 md:pb-8 font-outfit">
-      {/* Header with Tabs */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 flex-wrap">
-        <div className="flex flex-wrap items-center gap-4">
-          <h2 className="text-xl font-bold text-gray-800 tracking-tight shrink-0">
-            Articles Master
-          </h2>
+    <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 py-4 font-outfit flex flex-col gap-6 pb-20">
+      
+      {/* Sticky Header Section */}
+      <div className="sticky top-0 z-40 bg-gray-50/95 backdrop-blur-xl border-b border-gray-200/80 shadow-sm -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 pt-2 pb-4 flex flex-col gap-4 rounded-b-2xl">
+        
+        {/* Top Row: Title, Tabs, and Primary Actions */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-5">
+            <h2 className="text-2xl font-bold text-gray-800 tracking-tight shrink-0">
+              Articles Master
+            </h2>
 
-          {/* Role Tabs */}
-          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 shadow-sm overflow-x-auto scrollbar-hide shrink-0">
+            {/* Role Tabs */}
+            <div className="flex bg-gray-200/50 p-1.5 rounded-xl border border-gray-200/50 shadow-inner overflow-x-auto scrollbar-hide shrink-0">
+              <button
+                onClick={() => {
+                  setActiveRoleTab("Article");
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-2 py-1.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  activeRoleTab === "Article"
+                    ? "bg-white text-indigo-600 shadow-md border border-gray-200/60"
+                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                }`}
+              >
+                <Briefcase size={14} strokeWidth={2.5} />
+                <span>Articles ({articleCount})</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveRoleTab("Employee");
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-2 py-1.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  activeRoleTab === "Employee"
+                    ? "bg-white text-indigo-600 shadow-md border border-gray-200/60"
+                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                }`}
+              >
+                <Users size={14} strokeWidth={2.5} />
+                <span>Employees ({employeeCount})</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveRoleTab("Intern");
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-2 py-1.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  activeRoleTab === "Intern"
+                    ? "bg-white text-indigo-600 shadow-md border border-gray-200/60"
+                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                }`}
+              >
+                <GraduationCap size={14} strokeWidth={2.5} />
+                <span>Interns ({internCount})</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setActiveRoleTab("Article");
-                setCurrentPage(1);
-              }}
-              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${
-                activeRoleTab === "Article"
-                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center justify-center gap-2 h-10 px-5 bg-white border border-gray-200 hover:bg-gray-50 hover:border-indigo-300 text-gray-700 rounded-xl shadow-sm hover:shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 group"
             >
-              <Briefcase size={13} strokeWidth={3} />
-              <span>Articles ({articleCount})</span>
+              <RefreshCw
+                size={16}
+                className={`${isRefreshing ? "animate-spin text-indigo-500" : "text-gray-400 group-hover:text-indigo-500 transition-colors"}`}
+              />
+              <span className="text-sm font-bold">Refresh</span>
             </button>
-            <button
-              onClick={() => {
-                setActiveRoleTab("Employee");
-                setCurrentPage(1);
-              }}
-              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${
-                activeRoleTab === "Employee"
-                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
+
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLScEgxqOqaOVGhsiJ5A5bRRTdrsqt6c3NZf4s7UdeuDYZhQ22A/viewform"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm font-bold tracking-wide"
             >
-              <Users size={13} strokeWidth={3} />
-              <span>Employees ({employeeCount})</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveRoleTab("Intern");
-                setCurrentPage(1);
-              }}
-              className={`flex items-center gap-2 py-1.5 px-4 text-[11px] font-black uppercase tracking-wider rounded-md transition-all duration-200 ${
-                activeRoleTab === "Intern"
-                  ? "bg-white text-indigo-600 shadow-sm border border-gray-200"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <GraduationCap size={13} strokeWidth={3} />
-              <span>Interns ({internCount})</span>
-            </button>
+              <UserPlus size={18} strokeWidth={2.5} />
+              <span>New Employee</span>
+            </a>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-end gap-3 w-full xl:w-auto flex-1 flex-wrap">
+        {/* Bottom Row: Search & Filters */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-3 rounded-xl border border-gray-200/60 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 flex-1">
           {/* Search */}
-          <div className="relative flex-1 sm:w-64 max-w-sm group">
+          <div className="relative flex-1 max-w-md group">
             <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors"
-              size={14}
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors"
+              size={16}
             />
             <input
               ref={searchInputRef}
@@ -618,7 +653,7 @@ const Employee = () => {
                 setSearchInput(e.target.value);
                 setCurrentPage(1);
               }}
-              className="pl-9 pr-8 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-full text-[13px] shadow-sm bg-white font-medium transition-all duration-200"
+              className="pl-10 pr-10 h-11 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-full text-[13px] shadow-sm bg-white font-medium transition-all duration-200"
             />
             {searchInput && (
               <button
@@ -627,69 +662,62 @@ const Employee = () => {
                   setCurrentPage(1);
                   searchInputRef.current?.focus();
                 }}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <XCircle size={14} />
+                <XCircle size={16} />
               </button>
             )}
           </div>
 
-          {/* Filters */}
-          <FilterDropdown
-            isOpen={isDeptDropdownOpen}
-            setIsOpen={setIsDeptDropdownOpen}
-            options={departments}
-            value={filterDepartment}
-            setValue={setFilterDepartment}
-            label={filterDepartment || "All Dept"}
-            icon={Building2}
-            allLabel="All Departments"
-          />
-          <FilterDropdown
-            isOpen={isGenderDropdownOpen}
-            setIsOpen={setIsGenderDropdownOpen}
-            options={genders}
-            value={filterGender}
-            setValue={setFilterGender}
-            label={filterGender || "All Gender"}
-            icon={Users}
-            allLabel="All Genders"
-          />
-          <FilterDropdown
-            isOpen={isLevelDropdownOpen}
-            setIsOpen={setIsLevelDropdownOpen}
-            options={levels}
-            value={filterLevel}
-            setValue={setFilterLevel}
-            label={filterLevel || "All Level"}
-            icon={GraduationCap}
-            allLabel="All Levels"
-          />
-
-          {hasActiveFilters && (
-            <button
-              onClick={clearAllFilters}
-              className="flex items-center justify-center gap-1.5 h-9 px-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400/20"
-            >
-              <X size={12} /> Clear
-            </button>
-          )}
-
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center justify-center gap-2 h-9 px-4 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-700 rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw
-              size={14}
-              className={isRefreshing ? "animate-spin text-indigo-500" : ""}
-            />{" "}
-            Refresh
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterDropdown
+              isOpen={isDeptDropdownOpen}
+              setIsOpen={setIsDeptDropdownOpen}
+              options={departments}
+              value={filterDepartment}
+              setValue={setFilterDepartment}
+              label={filterDepartment || "All Dept"}
+              icon={Building2}
+              allLabel="All Departments"
+            />
+            <FilterDropdown
+              isOpen={isGenderDropdownOpen}
+              setIsOpen={setIsGenderDropdownOpen}
+              options={genders}
+              value={filterGender}
+              setValue={setFilterGender}
+              label={filterGender || "All Gender"}
+              icon={Users}
+              allLabel="All Genders"
+            />
+            <FilterDropdown
+              isOpen={isLevelDropdownOpen}
+              setIsOpen={setIsLevelDropdownOpen}
+              options={levels}
+              value={filterLevel}
+              setValue={setFilterLevel}
+              label={filterLevel || "All Level"}
+              icon={GraduationCap}
+              allLabel="All Levels"
+            />
+          </div>
         </div>
+
+        {hasActiveFilters && (
+          <button
+            onClick={clearAllFilters}
+            className="flex items-center justify-center gap-2 h-11 px-5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 shadow-sm"
+          >
+            <X size={16} strokeWidth={3} /> Clear Filters
+          </button>
+        )}
+      </div>
+      
+      {/* End Sticky Header Section */}
       </div>
 
-      <div className="hidden md:block overflow-hidden border border-gray-200 rounded-xl bg-white min-h-[530px] shadow-sm hover:shadow-md transition-shadow duration-300">
+      {/* Main Table Content */}
+      <div className="hidden md:block overflow-hidden border border-gray-200 rounded-2xl bg-white min-h-[530px] shadow-sm">
         {isLoading ? (
           <TableSkeleton columns={22} rows={10} />
         ) : (
